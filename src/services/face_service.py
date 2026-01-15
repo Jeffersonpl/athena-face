@@ -2,21 +2,24 @@
 Servico de Reconhecimento Facial v2.0
 Athena Face - InsightFace Integration
 """
-import numpy as np
-from pathlib import Path
-from typing import Optional, List, Dict, Tuple, Any
+
+import hashlib
+import logging
 from dataclasses import dataclass
 from enum import Enum
-import logging
-import hashlib
+from pathlib import Path
+from typing import Any
 
-from src.config.settings import MODELS_DIR, FACE_MODEL_NAME, FACE_DET_SIZE
+import numpy as np
+
+from src.config.settings import FACE_DET_SIZE, FACE_MODEL_NAME, MODELS_DIR
 
 logger = logging.getLogger(__name__)
 
 
 class FaceQuality(Enum):
     """Niveis de qualidade da face"""
+
     EXCELLENT = "excellent"
     GOOD = "good"
     ACCEPTABLE = "acceptable"
@@ -27,9 +30,10 @@ class FaceQuality(Enum):
 @dataclass
 class FaceResult:
     """Resultado da deteccao de face"""
-    embedding: List[float]
-    bbox: Dict[str, float]
-    landmarks: Optional[List[List[float]]]
+
+    embedding: list[float]
+    bbox: dict[str, float]
+    landmarks: list[list[float]] | None
     quality_score: float
     quality_level: FaceQuality
     det_score: float
@@ -45,9 +49,9 @@ class FaceService:
 
     # Thresholds de qualidade
     QUALITY_EXCELLENT = 0.15  # Face ocupa >15% da imagem
-    QUALITY_GOOD = 0.08       # Face ocupa >8% da imagem
+    QUALITY_GOOD = 0.08  # Face ocupa >8% da imagem
     QUALITY_ACCEPTABLE = 0.04  # Face ocupa >4% da imagem
-    QUALITY_MIN = 0.02        # Minimo para aceitar
+    QUALITY_MIN = 0.02  # Minimo para aceitar
 
     # Detection score minimo
     MIN_DET_SCORE = 0.5
@@ -59,7 +63,7 @@ class FaceService:
         self.face_app = None
         self.model_name = FACE_MODEL_NAME
         self.det_size = FACE_DET_SIZE
-        self._model_hash: Optional[str] = None
+        self._model_hash: str | None = None
 
     def initialize(self) -> bool:
         """
@@ -93,10 +97,7 @@ class FaceService:
             # Calcular hash do modelo para verificacao de integridade
             self._model_hash = self._calculate_model_hash(model_path)
 
-            self.face_app = FaceAnalysis(
-                name=self.model_name,
-                providers=['CPUExecutionProvider']
-            )
+            self.face_app = FaceAnalysis(name=self.model_name, providers=["CPUExecutionProvider"])
 
             self.face_app.prepare(ctx_id=0, det_size=self.det_size)
 
@@ -114,7 +115,7 @@ class FaceService:
         try:
             det_file = model_path / "det_10g.onnx"
             if det_file.exists():
-                with open(det_file, 'rb') as f:
+                with open(det_file, "rb") as f:
                     # Ler apenas os primeiros 1MB para performance
                     content = f.read(1024 * 1024)
                     return hashlib.sha256(content).hexdigest()
@@ -126,7 +127,7 @@ class FaceService:
         """Verifica se modelo esta carregado"""
         return self.face_app is not None
 
-    def get_model_info(self) -> Dict:
+    def get_model_info(self) -> dict:
         """Retorna informacoes do modelo"""
         return {
             "name": self.model_name,
@@ -134,14 +135,10 @@ class FaceService:
             "is_ready": self.is_ready(),
             "model_hash": self._model_hash[:16] if self._model_hash else None,
             "embedding_size": 512,
-            "version": "2.0"
+            "version": "2.0",
         }
 
-    def detect_faces(
-        self,
-        image_array: np.ndarray,
-        max_faces: int = 10
-    ) -> List[Any]:
+    def detect_faces(self, image_array: np.ndarray, max_faces: int = 10) -> list[Any]:
         """
         Detecta faces na imagem
 
@@ -160,9 +157,7 @@ class FaceService:
         # Ordenar por tamanho (maior primeiro) e limitar
         if len(faces) > 1:
             faces = sorted(
-                faces,
-                key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]),
-                reverse=True
+                faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]), reverse=True
             )
 
         return faces[:max_faces]
@@ -171,8 +166,8 @@ class FaceService:
         self,
         image_array: np.ndarray,
         allow_multiple: bool = False,
-        min_quality: FaceQuality = FaceQuality.ACCEPTABLE
-    ) -> Optional[Dict]:
+        min_quality: FaceQuality = FaceQuality.ACCEPTABLE,
+    ) -> dict | None:
         """
         Extrai embedding da face detectada
 
@@ -194,19 +189,19 @@ class FaceService:
             return {
                 "error": "multiple_faces",
                 "faces_count": len(faces),
-                "message": "Multiplas faces detectadas. Use allow_multiple=True ou capture apenas uma face."
+                "message": "Multiplas faces detectadas. Use allow_multiple=True ou capture apenas uma face.",
             }
 
         # Usar a maior face (primeira apos ordenacao)
         face = faces[0]
 
         # Validar detection score
-        det_score = float(face.det_score) if hasattr(face, 'det_score') else 0.0
+        det_score = float(face.det_score) if hasattr(face, "det_score") else 0.0
         if det_score < self.MIN_DET_SCORE:
             return {
                 "error": "low_detection_score",
                 "det_score": det_score,
-                "message": f"Detection score muito baixo: {det_score:.2f}"
+                "message": f"Detection score muito baixo: {det_score:.2f}",
             }
 
         # Calcular metricas de qualidade
@@ -221,7 +216,7 @@ class FaceService:
                 "error": "face_too_small",
                 "face_size": face_size,
                 "min_size": self.MIN_FACE_SIZE,
-                "message": "Face muito pequena. Aproxime-se da camera."
+                "message": "Face muito pequena. Aproxime-se da camera.",
             }
 
         image_height, image_width = image_array.shape[:2]
@@ -238,7 +233,7 @@ class FaceService:
             FaceQuality.POOR,
             FaceQuality.ACCEPTABLE,
             FaceQuality.GOOD,
-            FaceQuality.EXCELLENT
+            FaceQuality.EXCELLENT,
         ]
 
         if quality_order.index(quality_level) < quality_order.index(min_quality):
@@ -246,12 +241,12 @@ class FaceService:
                 "error": "low_quality",
                 "quality_level": quality_level.value,
                 "min_quality": min_quality.value,
-                "message": f"Qualidade {quality_level.value} abaixo do minimo {min_quality.value}"
+                "message": f"Qualidade {quality_level.value} abaixo do minimo {min_quality.value}",
             }
 
         # Processar landmarks
         landmarks = None
-        if hasattr(face, 'kps') and face.kps is not None:
+        if hasattr(face, "kps") and face.kps is not None:
             landmarks = face.kps.tolist()
 
         return {
@@ -262,7 +257,7 @@ class FaceService:
                 "x2": float(bbox[2]),
                 "y2": float(bbox[3]),
                 "width": float(face_width),
-                "height": float(face_height)
+                "height": float(face_height),
             },
             "quality_score": float(quality_score),
             "quality_level": quality_level.value,
@@ -270,14 +265,12 @@ class FaceService:
             "face_ratio": float(face_ratio),
             "landmarks": landmarks,
             "det_score": det_score,
-            "faces_detected": len(faces)
+            "faces_detected": len(faces),
         }
 
     def extract_all_embeddings(
-        self,
-        image_array: np.ndarray,
-        min_quality: FaceQuality = FaceQuality.POOR
-    ) -> List[Dict]:
+        self, image_array: np.ndarray, min_quality: FaceQuality = FaceQuality.POOR
+    ) -> list[dict]:
         """
         Extrai embeddings de todas as faces na imagem
 
@@ -304,7 +297,7 @@ class FaceService:
             quality_level = self._determine_quality_level(face_ratio)
             quality_score = min(face_ratio * 10, 1.0)
 
-            det_score = float(face.det_score) if hasattr(face, 'det_score') else 0.0
+            det_score = float(face.det_score) if hasattr(face, "det_score") else 0.0
 
             # Filtrar por qualidade
             quality_order = [
@@ -312,7 +305,7 @@ class FaceService:
                 FaceQuality.POOR,
                 FaceQuality.ACCEPTABLE,
                 FaceQuality.GOOD,
-                FaceQuality.EXCELLENT
+                FaceQuality.EXCELLENT,
             ]
 
             if quality_order.index(quality_level) < quality_order.index(min_quality):
@@ -322,24 +315,26 @@ class FaceService:
                 continue
 
             landmarks = None
-            if hasattr(face, 'kps') and face.kps is not None:
+            if hasattr(face, "kps") and face.kps is not None:
                 landmarks = face.kps.tolist()
 
-            results.append({
-                "index": i,
-                "embedding": face.embedding.tolist(),
-                "bbox": {
-                    "x1": float(bbox[0]),
-                    "y1": float(bbox[1]),
-                    "x2": float(bbox[2]),
-                    "y2": float(bbox[3])
-                },
-                "quality_score": float(quality_score),
-                "quality_level": quality_level.value,
-                "face_size": face_size,
-                "landmarks": landmarks,
-                "det_score": det_score
-            })
+            results.append(
+                {
+                    "index": i,
+                    "embedding": face.embedding.tolist(),
+                    "bbox": {
+                        "x1": float(bbox[0]),
+                        "y1": float(bbox[1]),
+                        "x2": float(bbox[2]),
+                        "y2": float(bbox[3]),
+                    },
+                    "quality_score": float(quality_score),
+                    "quality_level": quality_level.value,
+                    "face_size": face_size,
+                    "landmarks": landmarks,
+                    "det_score": det_score,
+                }
+            )
 
         return results
 
@@ -356,11 +351,7 @@ class FaceService:
         else:
             return FaceQuality.REJECTED
 
-    def calculate_distance(
-        self,
-        embedding1: List[float],
-        embedding2: List[float]
-    ) -> float:
+    def calculate_distance(self, embedding1: list[float], embedding2: list[float]) -> float:
         """
         Calcula distancia euclidiana entre dois embeddings
 
@@ -371,14 +362,10 @@ class FaceService:
         Returns:
             Distancia euclidiana
         """
-        return float(np.linalg.norm(
-            np.array(embedding1) - np.array(embedding2)
-        ))
+        return float(np.linalg.norm(np.array(embedding1) - np.array(embedding2)))
 
     def calculate_cosine_similarity(
-        self,
-        embedding1: List[float],
-        embedding2: List[float]
+        self, embedding1: list[float], embedding2: list[float]
     ) -> float:
         """
         Calcula similaridade de cosseno entre dois embeddings
@@ -416,11 +403,8 @@ class FaceService:
         return float(max(0, 1 - (distance / threshold)))
 
     def compare_embeddings(
-        self,
-        embedding1: List[float],
-        embedding2: List[float],
-        threshold: float
-    ) -> Dict:
+        self, embedding1: list[float], embedding2: list[float], threshold: float
+    ) -> dict:
         """
         Compara dois embeddings
 
@@ -453,15 +437,12 @@ class FaceService:
             "similarity": similarity,
             "cosine_similarity": cosine_sim,
             "threshold": threshold,
-            "confidence": confidence
+            "confidence": confidence,
         }
 
     def find_best_match(
-        self,
-        target_embedding: List[float],
-        candidates: List[Dict],
-        threshold: float
-    ) -> Optional[Dict]:
+        self, target_embedding: list[float], candidates: list[dict], threshold: float
+    ) -> dict | None:
         """
         Encontra o melhor match entre candidatos
 
@@ -474,28 +455,25 @@ class FaceService:
             Melhor candidato ou None
         """
         best_match = None
-        best_distance = float('inf')
+        best_distance = float("inf")
 
         for candidate in candidates:
-            if 'embedding' not in candidate:
+            if "embedding" not in candidate:
                 continue
 
-            distance = self.calculate_distance(
-                target_embedding,
-                candidate['embedding']
-            )
+            distance = self.calculate_distance(target_embedding, candidate["embedding"])
 
             if distance < threshold and distance < best_distance:
                 best_distance = distance
                 best_match = {
                     **candidate,
                     "distance": distance,
-                    "similarity": self.calculate_similarity(distance, threshold)
+                    "similarity": self.calculate_similarity(distance, threshold),
                 }
 
         return best_match
 
-    def validate_embedding(self, embedding: List[float]) -> Tuple[bool, str]:
+    def validate_embedding(self, embedding: list[float]) -> tuple[bool, str]:
         """
         Valida se um embedding e valido
 

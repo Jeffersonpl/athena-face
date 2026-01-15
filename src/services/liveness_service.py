@@ -14,19 +14,20 @@ Detecta tentativas de spoofing usando multiplas tecnicas:
 - Reflexao ocular
 - Analise de textura de pele
 """
-import cv2
-import numpy as np
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, field
-from collections import deque
-from enum import Enum
+
 import logging
 import time
+from collections import deque
+from dataclasses import dataclass, field
+from enum import Enum
+
+import cv2
+import numpy as np
 
 from src.config.settings import (
     LIVENESS_BLUR_THRESHOLD,
+    LIVENESS_BRIGHTNESS_MAX,
     LIVENESS_BRIGHTNESS_MIN,
-    LIVENESS_BRIGHTNESS_MAX
 )
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 class ChallengeType(Enum):
     """Tipos de challenge para liveness"""
+
     BLINK = "blink"
     TURN_LEFT = "turn_left"
     TURN_RIGHT = "turn_right"
@@ -46,26 +48,28 @@ class ChallengeType(Enum):
 @dataclass
 class FrameAnalysis:
     """Resultado da analise de um frame"""
+
     timestamp: float
-    face_position: Tuple[float, float]
+    face_position: tuple[float, float]
     face_size: float
     ear_left: float
     ear_right: float
     is_blink: bool
-    head_pose: Optional[Dict] = None
-    landmarks: Optional[np.ndarray] = None
+    head_pose: dict | None = None
+    landmarks: np.ndarray | None = None
 
 
 @dataclass
 class LivenessSession:
     """Sessao de liveness com historico"""
+
     session_id: str
     start_time: float = field(default_factory=time.time)
-    frames: List[FrameAnalysis] = field(default_factory=list)
+    frames: list[FrameAnalysis] = field(default_factory=list)
     blink_count: int = 0
-    challenges_completed: List[ChallengeType] = field(default_factory=list)
-    current_challenge: Optional[ChallengeType] = None
-    challenge_start_time: Optional[float] = None
+    challenges_completed: list[ChallengeType] = field(default_factory=list)
+    current_challenge: ChallengeType | None = None
+    challenge_start_time: float | None = None
 
 
 class LivenessService:
@@ -114,15 +118,11 @@ class LivenessService:
         self.pose_history: deque = deque(maxlen=20)
 
         # Sessoes ativas
-        self.sessions: Dict[str, LivenessSession] = {}
+        self.sessions: dict[str, LivenessSession] = {}
 
     # ==================== MAIN CHECK METHODS ====================
 
-    def check_liveness(
-        self,
-        image_array: np.ndarray,
-        face_data: Optional[Dict] = None
-    ) -> Dict:
+    def check_liveness(self, image_array: np.ndarray, face_data: dict | None = None) -> dict:
         """
         Verifica se imagem e de pessoa real usando multiplas tecnicas
 
@@ -147,9 +147,9 @@ class LivenessService:
         reflection_result = {"passed": True, "score": 0.7, "available": False}
         skin_result = {"passed": True, "score": 0.7, "available": False}
 
-        if face_data and 'landmarks' in face_data and face_data['landmarks'] is not None:
-            landmarks = np.array(face_data['landmarks'])
-            bbox = face_data.get('bbox', {})
+        if face_data and "landmarks" in face_data and face_data["landmarks"] is not None:
+            landmarks = np.array(face_data["landmarks"])
+            bbox = face_data.get("bbox", {})
 
             # Analise de profundidade 3D via landmarks
             depth_result = self._check_depth_3d(landmarks, image_array.shape)
@@ -162,33 +162,31 @@ class LivenessService:
 
         # Pesos para score final
         weights = {
-            'blur': 0.15,
-            'brightness': 0.10,
-            'color': 0.10,
-            'texture': 0.20,
-            'frequency': 0.15,
-            'depth': 0.10,
-            'reflection': 0.10,
-            'skin': 0.10
+            "blur": 0.15,
+            "brightness": 0.10,
+            "color": 0.10,
+            "texture": 0.20,
+            "frequency": 0.15,
+            "depth": 0.10,
+            "reflection": 0.10,
+            "skin": 0.10,
         }
 
         # Calcular score ponderado
         liveness_score = (
-            blur_result['score'] * weights['blur'] +
-            brightness_result['score'] * weights['brightness'] +
-            color_result['score'] * weights['color'] +
-            texture_result['score'] * weights['texture'] +
-            frequency_result['score'] * weights['frequency'] +
-            depth_result['score'] * weights['depth'] +
-            reflection_result['score'] * weights['reflection'] +
-            skin_result['score'] * weights['skin']
+            blur_result["score"] * weights["blur"]
+            + brightness_result["score"] * weights["brightness"]
+            + color_result["score"] * weights["color"]
+            + texture_result["score"] * weights["texture"]
+            + frequency_result["score"] * weights["frequency"]
+            + depth_result["score"] * weights["depth"]
+            + reflection_result["score"] * weights["reflection"]
+            + skin_result["score"] * weights["skin"]
         )
 
         # Verificar checks criticos
         critical_checks_passed = (
-            blur_result['passed'] and
-            texture_result['passed'] and
-            frequency_result['passed']
+            blur_result["passed"] and texture_result["passed"] and frequency_result["passed"]
         )
 
         passed = liveness_score > 0.55 and critical_checks_passed
@@ -205,20 +203,20 @@ class LivenessService:
                 "frequency": frequency_result,
                 "depth_3d": depth_result,
                 "eye_reflection": reflection_result,
-                "skin_texture": skin_result
+                "skin_texture": skin_result,
             },
             "recommendation": self._get_recommendation(
                 blur_result, brightness_result, texture_result, depth_result
-            )
+            ),
         }
 
     def check_liveness_with_challenge(
         self,
         image_array: np.ndarray,
-        face_data: Dict,
+        face_data: dict,
         session_id: str,
-        challenge_type: Optional[str] = None
-    ) -> Dict:
+        challenge_type: str | None = None,
+    ) -> dict:
         """
         Verifica liveness com sistema de challenge-response
 
@@ -241,13 +239,13 @@ class LivenessService:
         basic_result = self.check_liveness(image_array, face_data)
 
         # Analisar frame para desafios
-        landmarks = np.array(face_data.get('landmarks', []))
+        landmarks = np.array(face_data.get("landmarks", []))
 
         challenge_result = {
             "completed": False,
             "current_challenge": None,
             "challenges_completed": len(session.challenges_completed),
-            "blink_count": session.blink_count
+            "blink_count": session.blink_count,
         }
 
         if len(landmarks) >= 5:
@@ -265,8 +263,8 @@ class LivenessService:
                 head_pose = self._estimate_head_pose(landmarks, image_array.shape)
 
                 # Verificar viradas
-                yaw = head_pose.get('yaw', 0)
-                pitch = head_pose.get('pitch', 0)
+                yaw = head_pose.get("yaw", 0)
+                pitch = head_pose.get("pitch", 0)
 
                 if yaw < -self.HEAD_TURN_THRESHOLD:
                     if ChallengeType.TURN_LEFT not in session.challenges_completed:
@@ -286,27 +284,27 @@ class LivenessService:
                 "completed": len(session.challenges_completed) >= 2,
                 "current_challenge": challenge_type,
                 "challenges_completed": [c.value for c in session.challenges_completed],
-                "blink_count": session.blink_count
+                "blink_count": session.blink_count,
             }
 
         # Combinar resultados
-        combined_score = basic_result['score'] * 0.7
-        if challenge_result['completed']:
+        combined_score = basic_result["score"] * 0.7
+        if challenge_result["completed"]:
             combined_score += 0.3
         elif len(session.challenges_completed) > 0:
             combined_score += 0.15
 
         return {
-            "passed": basic_result['passed'] and (combined_score > 0.6),
+            "passed": basic_result["passed"] and (combined_score > 0.6),
             "score": float(combined_score),
             "basic_liveness": basic_result,
             "challenge": challenge_result,
-            "session_id": session_id
+            "session_id": session_id,
         }
 
     # ==================== BASIC CHECKS ====================
 
-    def _check_blur(self, gray: np.ndarray) -> Dict:
+    def _check_blur(self, gray: np.ndarray) -> dict:
         """Detecta blur usando Laplacian variance"""
         laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
         blur_score = min(laplacian_var / self.blur_threshold, 1.0)
@@ -316,10 +314,10 @@ class LivenessService:
             "passed": passed,
             "score": float(blur_score),
             "variance": float(laplacian_var),
-            "threshold": self.blur_threshold
+            "threshold": self.blur_threshold,
         }
 
-    def _check_brightness(self, gray: np.ndarray) -> Dict:
+    def _check_brightness(self, gray: np.ndarray) -> dict:
         """Verifica brilho e contraste"""
         mean_brightness = np.mean(gray)
         std_brightness = np.std(gray)
@@ -341,10 +339,10 @@ class LivenessService:
             "mean": float(mean_brightness),
             "std": float(std_brightness),
             "in_range": brightness_in_range,
-            "has_contrast": has_contrast
+            "has_contrast": has_contrast,
         }
 
-    def _check_color_distribution(self, image: np.ndarray) -> Dict:
+    def _check_color_distribution(self, image: np.ndarray) -> dict:
         """Analisa distribuicao de cores"""
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -369,10 +367,10 @@ class LivenessService:
             "color_std": float(color_std),
             "saturation_mean": float(sat_mean),
             "saturation_std": float(sat_std),
-            "hue_std": float(hue_std)
+            "hue_std": float(hue_std),
         }
 
-    def _check_texture(self, gray: np.ndarray) -> Dict:
+    def _check_texture(self, gray: np.ndarray) -> dict:
         """Detecta padroes de textura suspeitos"""
         sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
         sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
@@ -396,8 +394,7 @@ class LivenessService:
             texture_score += 0.3
 
         passed = (
-            moire_score < self.MOIRE_THRESHOLD and
-            texture_variance > self.TEXTURE_THRESHOLD * 0.5
+            moire_score < self.MOIRE_THRESHOLD and texture_variance > self.TEXTURE_THRESHOLD * 0.5
         )
 
         return {
@@ -406,7 +403,7 @@ class LivenessService:
             "gradient_mean": float(grad_mean),
             "gradient_std": float(grad_std),
             "moire_score": float(moire_score),
-            "texture_variance": float(texture_variance)
+            "texture_variance": float(texture_variance),
         }
 
     def _detect_moire_pattern(self, gray: np.ndarray) -> float:
@@ -422,8 +419,9 @@ class LivenessService:
 
         center = magnitude.shape[0] // 2
         mask_size = 10
-        magnitude[center-mask_size:center+mask_size,
-                  center-mask_size:center+mask_size] = 0
+        magnitude[
+            center - mask_size : center + mask_size, center - mask_size : center + mask_size
+        ] = 0
 
         threshold = np.mean(magnitude) + 2 * np.std(magnitude)
         peaks = magnitude > threshold
@@ -438,12 +436,12 @@ class LivenessService:
 
         for y in range(0, h - window_size, window_size):
             for x in range(0, w - window_size, window_size):
-                window = gray[y:y+window_size, x:x+window_size]
+                window = gray[y : y + window_size, x : x + window_size]
                 variances.append(np.var(window))
 
         return float(np.mean(variances)) if variances else 0.0
 
-    def _check_frequency_domain(self, gray: np.ndarray) -> Dict:
+    def _check_frequency_domain(self, gray: np.ndarray) -> dict:
         """Analise no dominio de frequencia para detectar telas/impressoes"""
         resized = cv2.resize(gray, (256, 256))
 
@@ -454,12 +452,12 @@ class LivenessService:
 
         center = magnitude.shape[0] // 2
 
-        low_freq = magnitude[center-30:center+30, center-30:center+30]
+        low_freq = magnitude[center - 30 : center + 30, center - 30 : center + 30]
         low_energy = np.mean(low_freq)
 
         mid_mask = np.zeros_like(magnitude, dtype=bool)
-        y, x = np.ogrid[:magnitude.shape[0], :magnitude.shape[1]]
-        r = np.sqrt((x - center)**2 + (y - center)**2)
+        y, x = np.ogrid[: magnitude.shape[0], : magnitude.shape[1]]
+        r = np.sqrt((x - center) ** 2 + (y - center) ** 2)
         mid_mask[(r > 30) & (r < 80)] = True
         mid_energy = np.mean(magnitude[mid_mask])
 
@@ -485,16 +483,12 @@ class LivenessService:
             "low_freq_energy": float(low_energy),
             "mid_freq_energy": float(mid_energy),
             "high_freq_energy": float(high_energy),
-            "energy_ratio": float(energy_ratio)
+            "energy_ratio": float(energy_ratio),
         }
 
     # ==================== ADVANCED CHECKS ====================
 
-    def _check_depth_3d(
-        self,
-        landmarks: np.ndarray,
-        image_shape: Tuple[int, ...]
-    ) -> Dict:
+    def _check_depth_3d(self, landmarks: np.ndarray, image_shape: tuple[int, ...]) -> dict:
         """
         Analisa profundidade 3D usando geometria dos landmarks
         Faces reais tem perspectiva 3D, fotos sao 2D flat
@@ -519,7 +513,7 @@ class LivenessService:
 
             # Distancia da boca aos olhos
             mouth_center = (mouth_left + mouth_right) / 2
-            mouth_to_eyes = np.linalg.norm(mouth_center - eye_center)
+            np.linalg.norm(mouth_center - eye_center)
 
             # Ratio de profundidade: nariz deve estar "a frente"
             # Em faces reais, a razao nariz/olhos e consistente
@@ -550,7 +544,7 @@ class LivenessService:
                     "available": True,
                     "depth_ratio": float(depth_ratio),
                     "symmetry_ratio": float(symmetry_ratio),
-                    "has_natural_asymmetry": natural_asymmetry
+                    "has_natural_asymmetry": natural_asymmetry,
                 }
         except Exception as e:
             logger.debug(f"Depth check error: {e}")
@@ -558,11 +552,8 @@ class LivenessService:
         return {"passed": True, "score": 0.7, "available": False}
 
     def _check_eye_reflection(
-        self,
-        image: np.ndarray,
-        landmarks: np.ndarray,
-        gray: np.ndarray
-    ) -> Dict:
+        self, image: np.ndarray, landmarks: np.ndarray, gray: np.ndarray
+    ) -> dict:
         """
         Detecta reflexos naturais nos olhos
         Olhos reais tem reflexos de luz, fotos/telas nao
@@ -606,11 +597,13 @@ class LivenessService:
                     # Reflexos naturais sao pequenos pontos brilhantes
                     if self.REFLECTION_AREA_RATIO < reflection_ratio < 0.1:
                         reflections_found += 1
-                        reflection_details.append({
-                            "eye": "left" if i == 0 else "right",
-                            "ratio": float(reflection_ratio),
-                            "found": True
-                        })
+                        reflection_details.append(
+                            {
+                                "eye": "left" if i == 0 else "right",
+                                "ratio": float(reflection_ratio),
+                                "found": True,
+                            }
+                        )
 
             # Score baseado em reflexos encontrados
             has_reflections = reflections_found >= 1
@@ -621,19 +614,14 @@ class LivenessService:
                 "score": float(min(score, 1.0)),
                 "available": True,
                 "reflections_found": reflections_found,
-                "details": reflection_details
+                "details": reflection_details,
             }
         except Exception as e:
             logger.debug(f"Reflection check error: {e}")
 
         return {"passed": True, "score": 0.7, "available": False}
 
-    def _check_skin_texture(
-        self,
-        image: np.ndarray,
-        landmarks: np.ndarray,
-        bbox: Dict
-    ) -> Dict:
+    def _check_skin_texture(self, image: np.ndarray, landmarks: np.ndarray, bbox: dict) -> dict:
         """
         Analisa textura da pele para detectar mascaras/fotos
         Pele real tem micro-texturas, fotos/mascaras sao mais lisas
@@ -646,7 +634,7 @@ class LivenessService:
 
             # Usar regiao da bochecha (entre olho e boca)
             left_eye = landmarks[0]
-            nose = landmarks[2]
+            landmarks[2]
             mouth_left = landmarks[3]
 
             # Ponto medio para regiao da bochecha
@@ -715,7 +703,7 @@ class LivenessService:
                 "available": True,
                 "gradient_mean": float(grad_mean),
                 "gradient_std": float(grad_std),
-                "local_variance": float(local_var)
+                "local_variance": float(local_var),
             }
         except Exception as e:
             logger.debug(f"Skin texture check error: {e}")
@@ -724,10 +712,7 @@ class LivenessService:
 
     # ==================== BLINK DETECTION ====================
 
-    def _calculate_ear_from_landmarks(
-        self,
-        landmarks: np.ndarray
-    ) -> Tuple[float, float]:
+    def _calculate_ear_from_landmarks(self, landmarks: np.ndarray) -> tuple[float, float]:
         """
         Calcula EAR aproximado usando landmarks do InsightFace
         InsightFace retorna apenas 5 pontos, entao usamos aproximacao
@@ -739,20 +724,17 @@ class LivenessService:
         # Usamos a distancia vertical aproximada
         left_eye = landmarks[0]
         right_eye = landmarks[1]
-        nose = landmarks[2]
+        landmarks[2]
 
         # Estimativa baseada na posicao relativa
         # (seria melhor com 68 landmarks completos)
-        eye_distance = np.linalg.norm(right_eye - left_eye)
+        np.linalg.norm(right_eye - left_eye)
 
         # EAR aproximado (assumindo olhos abertos por padrao)
         # Valores tipicos: 0.25-0.35 aberto, <0.2 fechado
         return (0.28, 0.28)
 
-    def calculate_ear(
-        self,
-        eye_landmarks: List[Tuple[float, float]]
-    ) -> float:
+    def calculate_ear(self, eye_landmarks: list[tuple[float, float]]) -> float:
         """
         Calcula Eye Aspect Ratio (EAR) para deteccao de blink
 
@@ -767,16 +749,10 @@ class LivenessService:
         if len(eye_landmarks) != 6:
             return 1.0
 
-        v1 = np.linalg.norm(
-            np.array(eye_landmarks[1]) - np.array(eye_landmarks[5])
-        )
-        v2 = np.linalg.norm(
-            np.array(eye_landmarks[2]) - np.array(eye_landmarks[4])
-        )
+        v1 = np.linalg.norm(np.array(eye_landmarks[1]) - np.array(eye_landmarks[5]))
+        v2 = np.linalg.norm(np.array(eye_landmarks[2]) - np.array(eye_landmarks[4]))
 
-        h = np.linalg.norm(
-            np.array(eye_landmarks[0]) - np.array(eye_landmarks[3])
-        )
+        h = np.linalg.norm(np.array(eye_landmarks[0]) - np.array(eye_landmarks[3]))
 
         if h == 0:
             return 1.0
@@ -784,11 +760,7 @@ class LivenessService:
         ear = (v1 + v2) / (2.0 * h)
         return float(ear)
 
-    def detect_blink(
-        self,
-        ear_left: float,
-        ear_right: float
-    ) -> Tuple[bool, int]:
+    def detect_blink(self, ear_left: float, ear_right: float) -> tuple[bool, int]:
         """
         Detecta se houve blink baseado no EAR
 
@@ -820,11 +792,7 @@ class LivenessService:
 
     # ==================== HEAD POSE ESTIMATION ====================
 
-    def _estimate_head_pose(
-        self,
-        landmarks: np.ndarray,
-        image_shape: Tuple[int, ...]
-    ) -> Dict:
+    def _estimate_head_pose(self, landmarks: np.ndarray, image_shape: tuple[int, ...]) -> dict:
         """
         Estima pose da cabeca usando landmarks
 
@@ -861,18 +829,12 @@ class LivenessService:
             nose_offset_y = nose[1] - eye_center[1]
             expected_nose_y = eye_distance * 0.35  # Distancia esperada
             if expected_nose_y > 0:
-                pitch = np.arctan2(
-                    nose_offset_y - expected_nose_y,
-                    expected_nose_y
-                ) * 180 / np.pi
+                pitch = np.arctan2(nose_offset_y - expected_nose_y, expected_nose_y) * 180 / np.pi
             else:
                 pitch = 0
 
             # Roll (inclinando a cabeca)
-            roll = np.arctan2(
-                right_eye[1] - left_eye[1],
-                right_eye[0] - left_eye[0]
-            ) * 180 / np.pi
+            roll = np.arctan2(right_eye[1] - left_eye[1], right_eye[0] - left_eye[0]) * 180 / np.pi
 
             # Guardar historico
             pose = {"yaw": float(yaw), "pitch": float(pitch), "roll": float(roll)}
@@ -885,41 +847,35 @@ class LivenessService:
 
     # ==================== FRAME SEQUENCE ANALYSIS ====================
 
-    def check_multiple_faces(self, faces_count: int) -> Dict:
+    def check_multiple_faces(self, faces_count: int) -> dict:
         """Verifica se ha multiplas faces (suspeito)"""
         return {
             "passed": faces_count == 1,
             "faces_count": faces_count,
             "message": (
-                "OK" if faces_count == 1
-                else "Multiplas faces detectadas" if faces_count > 1
-                else "Nenhuma face detectada"
-            )
+                "OK"
+                if faces_count == 1
+                else "Multiplas faces detectadas" if faces_count > 1 else "Nenhuma face detectada"
+            ),
         }
 
     def analyze_frame_sequence(
-        self,
-        frames: List[Dict],
-        challenge_data: Optional[Dict] = None
-    ) -> Dict:
+        self, frames: list[dict], challenge_data: dict | None = None
+    ) -> dict:
         """
         Analisa sequencia de frames para detectar movimento natural
         """
         if len(frames) < self.MIN_MOVEMENT_FRAMES:
-            return {
-                "passed": False,
-                "score": 0.0,
-                "reason": "Frames insuficientes para analise"
-            }
+            return {"passed": False, "score": 0.0, "reason": "Frames insuficientes para analise"}
 
-        positions = [(f['position']['x'], f['position']['y']) for f in frames]
-        sizes = [f['size'] for f in frames]
+        positions = [(f["position"]["x"], f["position"]["y"]) for f in frames]
+        sizes = [f["size"] for f in frames]
 
         # Calcular movimento total
         total_movement = 0.0
         for i in range(1, len(positions)):
-            dx = positions[i][0] - positions[i-1][0]
-            dy = positions[i][1] - positions[i-1][1]
+            dx = positions[i][0] - positions[i - 1][0]
+            dy = positions[i][1] - positions[i - 1][1]
             total_movement += np.sqrt(dx**2 + dy**2)
 
         size_variance = np.std(sizes)
@@ -927,8 +883,8 @@ class LivenessService:
         # Calcular variancia de movimento
         movements = []
         for i in range(1, len(positions)):
-            dx = positions[i][0] - positions[i-1][0]
-            dy = positions[i][1] - positions[i-1][1]
+            dx = positions[i][0] - positions[i - 1][0]
+            dy = positions[i][1] - positions[i - 1][1]
             movements.append(np.sqrt(dx**2 + dy**2))
 
         movement_variance = np.var(movements) if movements else 0
@@ -959,23 +915,23 @@ class LivenessService:
                 "movement_variance": float(movement_variance),
                 "size_variance": float(size_variance),
                 "frames_analyzed": len(frames),
-                "challenges_score": float(challenges_score)
-            }
+                "challenges_score": float(challenges_score),
+            },
         }
 
-    def _validate_challenges(self, challenge_data: Dict) -> float:
+    def _validate_challenges(self, challenge_data: dict) -> float:
         """Valida se os challenges foram completados de forma natural"""
-        if not challenge_data or 'challenges' not in challenge_data:
+        if not challenge_data or "challenges" not in challenge_data:
             return 0.0
 
-        challenges = challenge_data.get('challenges', [])
+        challenges = challenge_data.get("challenges", [])
         if not challenges:
             return 0.0
 
-        times = [c.get('time', 0) for c in challenges]
+        times = [c.get("time", 0) for c in challenges]
 
         if len(times) >= 2:
-            time_diffs = [times[i] - times[i-1] for i in range(1, len(times))]
+            time_diffs = [times[i] - times[i - 1] for i in range(1, len(times))]
             avg_time = np.mean(time_diffs)
 
             if avg_time < 500:
@@ -996,11 +952,11 @@ class LivenessService:
         self.sessions[session_id] = session
         return session
 
-    def get_session(self, session_id: str) -> Optional[LivenessSession]:
+    def get_session(self, session_id: str) -> LivenessSession | None:
         """Recupera sessao existente"""
         return self.sessions.get(session_id)
 
-    def end_session(self, session_id: str) -> Optional[Dict]:
+    def end_session(self, session_id: str) -> dict | None:
         """Finaliza sessao e retorna resultado"""
         session = self.sessions.pop(session_id, None)
         if session:
@@ -1009,7 +965,7 @@ class LivenessService:
                 "duration": time.time() - session.start_time,
                 "blink_count": session.blink_count,
                 "challenges_completed": [c.value for c in session.challenges_completed],
-                "frames_analyzed": len(session.frames)
+                "frames_analyzed": len(session.frames),
             }
         return None
 
@@ -1017,7 +973,8 @@ class LivenessService:
         """Remove sessoes antigas (default: 5 minutos)"""
         current_time = time.time()
         expired = [
-            sid for sid, session in self.sessions.items()
+            sid
+            for sid, session in self.sessions.items()
             if current_time - session.start_time > max_age_seconds
         ]
         for sid in expired:
@@ -1030,30 +987,30 @@ class LivenessService:
 
     def _get_recommendation(
         self,
-        blur_result: Dict,
-        brightness_result: Dict,
-        texture_result: Dict,
-        depth_result: Optional[Dict] = None
+        blur_result: dict,
+        brightness_result: dict,
+        texture_result: dict,
+        depth_result: dict | None = None,
     ) -> str:
         """Gera recomendacao baseada nos resultados"""
         recommendations = []
 
-        if not blur_result['passed']:
+        if not blur_result["passed"]:
             recommendations.append("Imagem muito borrada - mantenha a camera estavel")
 
-        if not brightness_result['passed']:
-            if brightness_result['mean'] < self.brightness_min:
+        if not brightness_result["passed"]:
+            if brightness_result["mean"] < self.brightness_min:
                 recommendations.append("Ambiente muito escuro - melhore a iluminacao")
-            elif brightness_result['mean'] > self.brightness_max:
+            elif brightness_result["mean"] > self.brightness_max:
                 recommendations.append("Ambiente muito claro - reduza a iluminacao")
-            if not brightness_result['has_contrast']:
+            if not brightness_result["has_contrast"]:
                 recommendations.append("Imagem com pouco contraste")
 
-        if not texture_result['passed']:
-            if texture_result['moire_score'] > self.MOIRE_THRESHOLD:
+        if not texture_result["passed"]:
+            if texture_result["moire_score"] > self.MOIRE_THRESHOLD:
                 recommendations.append("Possivel uso de tela/impressao detectado")
 
-        if depth_result and depth_result.get('available') and not depth_result['passed']:
+        if depth_result and depth_result.get("available") and not depth_result["passed"]:
             recommendations.append("Face parece plana - aproxime-se da camera")
 
         if not recommendations:

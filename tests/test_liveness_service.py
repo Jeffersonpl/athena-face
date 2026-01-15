@@ -1,10 +1,10 @@
 """
 Testes unitarios para o LivenessService
 """
-import pytest
-import numpy as np
+
 import cv2
-from unittest.mock import patch, MagicMock
+import numpy as np
+import pytest
 
 from src.services.liveness_service import LivenessService
 
@@ -72,17 +72,17 @@ class TestLivenessService:
         gray = cv2.cvtColor(real_face_image, cv2.COLOR_BGR2GRAY)
         result = service._check_blur(gray)
 
-        assert result['passed'] is True
-        assert result['score'] > 0.5
-        assert result['variance'] > service.blur_threshold
+        assert result["passed"] is True
+        assert result["score"] > 0.5
+        assert result["variance"] > service.blur_threshold
 
     def test_check_blur_blurry_image(self, service, blurry_image):
         """Testa deteccao de blur em imagem borrada"""
         gray = cv2.cvtColor(blurry_image, cv2.COLOR_BGR2GRAY)
         result = service._check_blur(gray)
 
-        assert result['passed'] is False
-        assert result['score'] < 0.5
+        assert result["passed"] is False
+        assert result["score"] < 0.5
 
     # ==================== Testes de Brilho ====================
 
@@ -91,25 +91,25 @@ class TestLivenessService:
         gray = cv2.cvtColor(real_face_image, cv2.COLOR_BGR2GRAY)
         result = service._check_brightness(gray)
 
-        assert result['passed'] is True
-        assert result['in_range'] is True
-        assert result['has_contrast'] is True
+        assert result["passed"] is True
+        assert result["in_range"] is True
+        assert result["has_contrast"] is True
 
     def test_check_brightness_dark_image(self, service, dark_image):
         """Testa verificacao de brilho em imagem escura"""
         gray = cv2.cvtColor(dark_image, cv2.COLOR_BGR2GRAY)
         result = service._check_brightness(gray)
 
-        assert result['passed'] is False
-        assert result['mean'] < service.brightness_min
+        assert result["passed"] is False
+        assert result["mean"] < service.brightness_min
 
     def test_check_brightness_bright_image(self, service, bright_image):
         """Testa verificacao de brilho em imagem muito clara"""
         gray = cv2.cvtColor(bright_image, cv2.COLOR_BGR2GRAY)
         result = service._check_brightness(gray)
 
-        assert result['passed'] is False
-        assert result['mean'] > service.brightness_max
+        assert result["passed"] is False
+        assert result["mean"] > service.brightness_max
 
     # ==================== Testes de Cor ====================
 
@@ -117,16 +117,16 @@ class TestLivenessService:
         """Testa distribuicao de cores em imagem real"""
         result = service._check_color_distribution(real_face_image)
 
-        assert result['passed'] is True
-        assert result['score'] > 0.5
-        assert result['color_std'] > 30
+        assert result["passed"] is True
+        assert result["score"] > 0.5
+        assert result["color_std"] > 30
 
     def test_check_color_distribution_low_color(self, service, low_color_image):
         """Testa distribuicao de cores em imagem com pouca variacao"""
         result = service._check_color_distribution(low_color_image)
 
-        assert result['passed'] is False
-        assert result['color_std'] < 30
+        assert result["passed"] is False
+        assert result["color_std"] < 30
 
     # ==================== Testes de Textura ====================
 
@@ -135,8 +135,8 @@ class TestLivenessService:
         gray = cv2.cvtColor(real_face_image, cv2.COLOR_BGR2GRAY)
         result = service._check_texture(gray)
 
-        assert result['passed'] is True
-        assert result['moire_score'] < service.MOIRE_THRESHOLD
+        assert result["passed"] is True
+        assert result["moire_score"] < service.MOIRE_THRESHOLD
 
     def test_detect_moire_pattern(self, service, real_face_image):
         """Testa deteccao de padrao Moire"""
@@ -153,10 +153,10 @@ class TestLivenessService:
         gray = cv2.cvtColor(real_face_image, cv2.COLOR_BGR2GRAY)
         result = service._check_frequency_domain(gray)
 
-        assert 'low_freq_energy' in result
-        assert 'mid_freq_energy' in result
-        assert 'high_freq_energy' in result
-        assert 'energy_ratio' in result
+        assert "low_freq_energy" in result
+        assert "mid_freq_energy" in result
+        assert "high_freq_energy" in result
+        assert "energy_ratio" in result
 
     # ==================== Testes de Liveness Completo ====================
 
@@ -164,27 +164,27 @@ class TestLivenessService:
         """Testa verificacao completa de liveness em imagem real"""
         result = service.check_liveness(real_face_image)
 
-        assert 'passed' in result
-        assert 'score' in result
-        assert 'details' in result
-        assert 'recommendation' in result
+        assert "passed" in result
+        assert "score" in result
+        assert "details" in result
+        assert "recommendation" in result
 
-        assert 0 <= result['score'] <= 1
+        assert 0 <= result["score"] <= 1
 
         # Verificar detalhes
-        details = result['details']
-        assert 'blur' in details
-        assert 'brightness' in details
-        assert 'color' in details
-        assert 'texture' in details
-        assert 'frequency' in details
+        details = result["details"]
+        assert "blur" in details
+        assert "brightness" in details
+        assert "color" in details
+        assert "texture" in details
+        assert "frequency" in details
 
     def test_check_liveness_blurry_image(self, service, blurry_image):
         """Testa que imagem borrada falha no liveness"""
         result = service.check_liveness(blurry_image)
 
-        assert result['passed'] is False
-        assert result['details']['blur']['passed'] is False
+        assert result["passed"] is False
+        assert result["details"]["blur"]["passed"] is False
 
     # ==================== Testes de Multiplas Faces ====================
 
@@ -192,56 +192,56 @@ class TestLivenessService:
         """Testa verificacao com uma face"""
         result = service.check_multiple_faces(1)
 
-        assert result['passed'] is True
-        assert result['faces_count'] == 1
-        assert result['message'] == "OK"
+        assert result["passed"] is True
+        assert result["faces_count"] == 1
+        assert result["message"] == "OK"
 
     def test_check_multiple_faces_many_faces(self, service):
         """Testa verificacao com multiplas faces"""
         result = service.check_multiple_faces(3)
 
-        assert result['passed'] is False
-        assert result['faces_count'] == 3
-        assert "Multiplas" in result['message']
+        assert result["passed"] is False
+        assert result["faces_count"] == 3
+        assert "Multiplas" in result["message"]
 
     def test_check_multiple_faces_no_face(self, service):
         """Testa verificacao sem faces"""
         result = service.check_multiple_faces(0)
 
-        assert result['passed'] is False
-        assert result['faces_count'] == 0
-        assert "Nenhuma" in result['message']
+        assert result["passed"] is False
+        assert result["faces_count"] == 0
+        assert "Nenhuma" in result["message"]
 
     # ==================== Testes de Frame Sequence ====================
 
     def test_analyze_frame_sequence_insufficient_frames(self, service):
         """Testa analise com frames insuficientes"""
         frames = [
-            {'position': {'x': 0.5, 'y': 0.5}, 'size': 0.1, 'time': 0},
-            {'position': {'x': 0.5, 'y': 0.5}, 'size': 0.1, 'time': 100},
+            {"position": {"x": 0.5, "y": 0.5}, "size": 0.1, "time": 0},
+            {"position": {"x": 0.5, "y": 0.5}, "size": 0.1, "time": 100},
         ]
 
         result = service.analyze_frame_sequence(frames)
 
-        assert result['passed'] is False
-        assert 'insuficientes' in result.get('reason', '').lower()
+        assert result["passed"] is False
+        assert "insuficientes" in result.get("reason", "").lower()
 
     def test_analyze_frame_sequence_with_movement(self, service):
         """Testa analise com movimento natural"""
         frames = [
-            {'position': {'x': 0.5, 'y': 0.5}, 'size': 0.1, 'time': 0},
-            {'position': {'x': 0.52, 'y': 0.48}, 'size': 0.11, 'time': 100},
-            {'position': {'x': 0.48, 'y': 0.52}, 'size': 0.10, 'time': 200},
-            {'position': {'x': 0.55, 'y': 0.45}, 'size': 0.12, 'time': 300},
-            {'position': {'x': 0.50, 'y': 0.50}, 'size': 0.11, 'time': 400},
-            {'position': {'x': 0.45, 'y': 0.55}, 'size': 0.10, 'time': 500},
+            {"position": {"x": 0.5, "y": 0.5}, "size": 0.1, "time": 0},
+            {"position": {"x": 0.52, "y": 0.48}, "size": 0.11, "time": 100},
+            {"position": {"x": 0.48, "y": 0.52}, "size": 0.10, "time": 200},
+            {"position": {"x": 0.55, "y": 0.45}, "size": 0.12, "time": 300},
+            {"position": {"x": 0.50, "y": 0.50}, "size": 0.11, "time": 400},
+            {"position": {"x": 0.45, "y": 0.55}, "size": 0.10, "time": 500},
         ]
 
         result = service.analyze_frame_sequence(frames)
 
-        assert 'score' in result
-        assert 'details' in result
-        assert result['details']['frames_analyzed'] == 6
+        assert "score" in result
+        assert "details" in result
+        assert result["details"]["frames_analyzed"] == 6
 
     # ==================== Testes de EAR (Eye Aspect Ratio) ====================
 
@@ -249,12 +249,12 @@ class TestLivenessService:
         """Testa calculo de EAR para olho aberto"""
         # Landmarks simulando olho aberto (formato horizontal alongado)
         eye_landmarks = [
-            (0.0, 0.5),   # p1 - canto esquerdo
-            (0.2, 0.3),   # p2 - superior esquerdo
-            (0.4, 0.3),   # p3 - superior direito
-            (0.6, 0.5),   # p4 - canto direito
-            (0.4, 0.7),   # p5 - inferior direito
-            (0.2, 0.7),   # p6 - inferior esquerdo
+            (0.0, 0.5),  # p1 - canto esquerdo
+            (0.2, 0.3),  # p2 - superior esquerdo
+            (0.4, 0.3),  # p3 - superior direito
+            (0.6, 0.5),  # p4 - canto direito
+            (0.4, 0.7),  # p5 - inferior direito
+            (0.2, 0.7),  # p6 - inferior esquerdo
         ]
 
         ear = service.calculate_ear(eye_landmarks)
@@ -266,10 +266,10 @@ class TestLivenessService:
         """Testa calculo de EAR para olho fechado"""
         # Landmarks simulando olho fechado (muito achatado)
         eye_landmarks = [
-            (0.0, 0.5),   # p1 - canto esquerdo
+            (0.0, 0.5),  # p1 - canto esquerdo
             (0.2, 0.48),  # p2 - superior esquerdo
             (0.4, 0.48),  # p3 - superior direito
-            (0.6, 0.5),   # p4 - canto direito
+            (0.6, 0.5),  # p4 - canto direito
             (0.4, 0.52),  # p5 - inferior direito
             (0.2, 0.52),  # p6 - inferior esquerdo
         ]
@@ -324,11 +324,11 @@ class TestLivenessService:
     def test_validate_challenges_normal_timing(self, service):
         """Testa validacao de challenges com timing normal"""
         challenge_data = {
-            'challenges': [
-                {'time': 0},
-                {'time': 1500},
-                {'time': 3000},
-                {'time': 4500},
+            "challenges": [
+                {"time": 0},
+                {"time": 1500},
+                {"time": 3000},
+                {"time": 4500},
             ]
         }
 
@@ -339,11 +339,11 @@ class TestLivenessService:
     def test_validate_challenges_too_fast(self, service):
         """Testa validacao de challenges muito rapidos"""
         challenge_data = {
-            'challenges': [
-                {'time': 0},
-                {'time': 100},
-                {'time': 200},
-                {'time': 300},
+            "challenges": [
+                {"time": 0},
+                {"time": 100},
+                {"time": 200},
+                {"time": 300},
             ]
         }
 
@@ -363,37 +363,31 @@ class TestLivenessService:
 
     def test_get_recommendation_good(self, service):
         """Testa recomendacao para resultados bons"""
-        blur_result = {'passed': True}
-        brightness_result = {'passed': True, 'mean': 127, 'has_contrast': True}
-        texture_result = {'passed': True, 'moire_score': 0.05}
+        blur_result = {"passed": True}
+        brightness_result = {"passed": True, "mean": 127, "has_contrast": True}
+        texture_result = {"passed": True, "moire_score": 0.05}
 
-        recommendation = service._get_recommendation(
-            blur_result, brightness_result, texture_result
-        )
+        recommendation = service._get_recommendation(blur_result, brightness_result, texture_result)
 
         assert recommendation == "Qualidade adequada"
 
     def test_get_recommendation_blur_issue(self, service):
         """Testa recomendacao para problema de blur"""
-        blur_result = {'passed': False}
-        brightness_result = {'passed': True, 'mean': 127, 'has_contrast': True}
-        texture_result = {'passed': True, 'moire_score': 0.05}
+        blur_result = {"passed": False}
+        brightness_result = {"passed": True, "mean": 127, "has_contrast": True}
+        texture_result = {"passed": True, "moire_score": 0.05}
 
-        recommendation = service._get_recommendation(
-            blur_result, brightness_result, texture_result
-        )
+        recommendation = service._get_recommendation(blur_result, brightness_result, texture_result)
 
         assert "borrada" in recommendation.lower()
 
     def test_get_recommendation_dark_image(self, service):
         """Testa recomendacao para imagem escura"""
-        blur_result = {'passed': True}
-        brightness_result = {'passed': False, 'mean': 30, 'has_contrast': True}
-        texture_result = {'passed': True, 'moire_score': 0.05}
+        blur_result = {"passed": True}
+        brightness_result = {"passed": False, "mean": 30, "has_contrast": True}
+        texture_result = {"passed": True, "moire_score": 0.05}
 
-        recommendation = service._get_recommendation(
-            blur_result, brightness_result, texture_result
-        )
+        recommendation = service._get_recommendation(blur_result, brightness_result, texture_result)
 
         assert "escuro" in recommendation.lower()
 
@@ -417,19 +411,19 @@ class TestLivenessServiceIntegration:
 
         # Verificar estrutura completa
         assert isinstance(result, dict)
-        assert 'passed' in result
-        assert 'score' in result
-        assert 'details' in result
-        assert 'recommendation' in result
+        assert "passed" in result
+        assert "score" in result
+        assert "details" in result
+        assert "recommendation" in result
 
         # Verificar tipos
-        assert isinstance(result['passed'], bool)
-        assert isinstance(result['score'], float)
-        assert isinstance(result['details'], dict)
-        assert isinstance(result['recommendation'], str)
+        assert isinstance(result["passed"], bool)
+        assert isinstance(result["score"], float)
+        assert isinstance(result["details"], dict)
+        assert isinstance(result["recommendation"], str)
 
         # Verificar limites
-        assert 0 <= result['score'] <= 1
+        assert 0 <= result["score"] <= 1
 
     def test_service_is_stateless_for_liveness_check(self, service):
         """Testa que check_liveness e stateless"""
@@ -439,5 +433,5 @@ class TestLivenessServiceIntegration:
         result2 = service.check_liveness(img)
 
         # Resultados devem ser identicos
-        assert result1['score'] == result2['score']
-        assert result1['passed'] == result2['passed']
+        assert result1["score"] == result2["score"]
+        assert result1["passed"] == result2["passed"]

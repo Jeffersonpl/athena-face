@@ -1,0 +1,63 @@
+# =============================================================================
+# Docker Compose Override - Desenvolvimento Local
+# =============================================================================
+# Copie para docker-compose.override.yml para customizacoes locais
+# Este arquivo NAO deve ser commitado
+# =============================================================================
+
+services:
+  athenaface_service:
+    # Habilitar reload automatico em desenvolvimento
+    environment:
+      - API_RELOAD=true
+      - LOG_LEVEL=DEBUG
+
+    # Montar codigo fonte para hot-reload
+    volumes:
+      - ./src:/app/src:ro
+      - ./frontend:/app/frontend:ro
+
+    # Expor porta de debug
+    ports:
+      - "8001:8001"
+      - "5678:5678"  # debugpy
+
+  # =============================================================================
+  # MySQL Local (opcional - se nao usar banco externo)
+  # =============================================================================
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root_dev_password
+      MYSQL_DATABASE: athenaface_dev
+      MYSQL_USER: athenaface
+      MYSQL_PASSWORD: dev_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+
+  # =============================================================================
+  # Redis Local (para rate limiting)
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # =============================================================================
+  # Adminer (UI para MySQL)
+  # =============================================================================
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+
+volumes:
+  mysql_data:
+  redis_data:

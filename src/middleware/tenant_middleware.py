@@ -2,18 +2,17 @@
 Middleware de autenticacao e identificacao de tenant
 Suporta rate limiting em memoria (desenvolvimento) ou Redis (producao)
 """
+
 import logging
-import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Optional
 
-from fastapi import Request, HTTPException, status
+from fastapi import HTTPException, Request, status
 from fastapi.security import APIKeyHeader
 
+from src.config.settings import REDIS_DB, REDIS_ENABLED, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT
 from src.config.tenants import get_tenant_by_api_key
-from src.config.settings import REDIS_ENABLED, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_DB
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +21,7 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 # ==================== Rate Limiter Interface ====================
+
 
 class RateLimiter(ABC):
     """Interface para rate limiters"""
@@ -49,6 +49,7 @@ class RateLimiter(ABC):
 
 # ==================== In-Memory Rate Limiter ====================
 
+
 class InMemoryRateLimiter(RateLimiter):
     """
     Rate limiter em memoria.
@@ -65,10 +66,7 @@ class InMemoryRateLimiter(RateLimiter):
         window_start = now - timedelta(seconds=window_seconds)
 
         # Limpar requests antigos
-        self._store[key] = [
-            ts for ts in self._store[key]
-            if ts > window_start
-        ]
+        self._store[key] = [ts for ts in self._store[key] if ts > window_start]
 
         # Verificar limite
         if len(self._store[key]) >= limit:
@@ -83,15 +81,13 @@ class InMemoryRateLimiter(RateLimiter):
         window_start = now - timedelta(seconds=window_seconds)
 
         # Contar requests na janela
-        current = len([
-            ts for ts in self._store[key]
-            if ts > window_start
-        ])
+        current = len([ts for ts in self._store[key] if ts > window_start])
 
         return max(0, limit - current)
 
 
 # ==================== Redis Rate Limiter ====================
+
 
 class RedisRateLimiter(RateLimiter):
     """
@@ -102,6 +98,7 @@ class RedisRateLimiter(RateLimiter):
     def __init__(self):
         try:
             import redis
+
             self._redis = redis.Redis(
                 host=REDIS_HOST,
                 port=REDIS_PORT,
@@ -109,7 +106,7 @@ class RedisRateLimiter(RateLimiter):
                 db=REDIS_DB,
                 decode_responses=True,
                 socket_timeout=5,
-                socket_connect_timeout=5
+                socket_connect_timeout=5,
             )
             # Testar conexao
             self._redis.ping()
@@ -158,7 +155,7 @@ class RedisRateLimiter(RateLimiter):
 
 # ==================== Rate Limiter Factory ====================
 
-_rate_limiter: Optional[RateLimiter] = None
+_rate_limiter: RateLimiter | None = None
 
 
 def get_rate_limiter() -> RateLimiter:
@@ -183,7 +180,8 @@ def get_rate_limiter() -> RateLimiter:
 
 # ==================== Middleware Functions ====================
 
-async def verify_tenant_api_key(request: Request, api_key: Optional[str] = None) -> dict:
+
+async def verify_tenant_api_key(request: Request, api_key: str | None = None) -> dict:
     """
     Verifica API Key e identifica tenant
 
@@ -215,7 +213,7 @@ async def verify_tenant_api_key(request: Request, api_key: Optional[str] = None)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="API Key nao fornecida. Adicione header 'X-API-Key'",
-            headers={"WWW-Authenticate": "ApiKey"}
+            headers={"WWW-Authenticate": "ApiKey"},
         )
 
     # Buscar tenant pela API Key
@@ -223,8 +221,7 @@ async def verify_tenant_api_key(request: Request, api_key: Optional[str] = None)
 
     if not tenant_data:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="API Key invalida ou tenant inativo"
+            status_code=status.HTTP_403_FORBIDDEN, detail="API Key invalida ou tenant inativo"
         )
 
     tenant_id = tenant_data["tenant_id"]
@@ -242,8 +239,8 @@ async def verify_tenant_api_key(request: Request, api_key: Optional[str] = None)
             headers={
                 "X-RateLimit-Limit": str(rate_limit),
                 "X-RateLimit-Remaining": str(remaining),
-                "Retry-After": "60"
-            }
+                "Retry-After": "60",
+            },
         )
 
     # Adicionar ao request state
@@ -266,13 +263,11 @@ def get_tenant_from_request(request: Request) -> dict:
     if not hasattr(request.state, "tenant_id"):
         return {"tenant_id": None, "config": None}
 
-    return {
-        "tenant_id": request.state.tenant_id,
-        "config": request.state.tenant_config
-    }
+    return {"tenant_id": request.state.tenant_id, "config": request.state.tenant_config}
 
 
 # ==================== Rate Limit Headers Middleware ====================
+
 
 async def add_rate_limit_headers(request: Request, call_next):
     """

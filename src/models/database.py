@@ -1,6 +1,7 @@
 """
 Gerenciador de conexões MySQL por tenant
 """
+
 import mysql.connector
 from mysql.connector import pooling
 from typing import Dict, Optional
@@ -38,7 +39,7 @@ def get_tenant_db_pool(tenant_config: dict) -> pooling.MySQLConnectionPool:
             database=tenant_config["db_name"],
             user=tenant_config["db_user"],
             password=tenant_config["db_pass"],
-            autocommit=False
+            autocommit=False,
         )
 
         connection_pools[tenant_id] = pool

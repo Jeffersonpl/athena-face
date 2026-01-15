@@ -1,18 +1,21 @@
 """
 Testes da API Athena Face v1.1.0
 """
+
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi.testclient import TestClient
+
 from src.main import app
 
 client = TestClient(app)
 
 
 # ==================== TESTES DE ENDPOINTS PUBLICOS ====================
+
 
 def test_read_root():
     """Testa endpoint raiz"""
@@ -57,12 +60,10 @@ def test_list_tenants():
 
 # ==================== TESTES DE AUTENTICACAO ====================
 
+
 def test_register_without_api_key():
     """Testa cadastro sem API Key"""
-    response = client.post(
-        "/api/face/register",
-        data={"user_id": 1, "check_liveness": True}
-    )
+    response = client.post("/api/face/register", data={"user_id": 1, "check_liveness": True})
     assert response.status_code == 401
     assert "API Key" in response.json()["detail"]
 
@@ -82,21 +83,18 @@ def test_compare_without_api_key():
 def test_invalid_api_key():
     """Testa com API Key invalida"""
     response = client.post(
-        "/api/face/register",
-        headers={"X-API-Key": "invalid_key_12345"},
-        data={"user_id": 1}
+        "/api/face/register", headers={"X-API-Key": "invalid_key_12345"}, data={"user_id": 1}
     )
     assert response.status_code == 401
 
 
 # ==================== TESTES DE VALIDACAO ====================
 
+
 def test_register_invalid_user_id_zero():
     """Testa cadastro com user_id = 0"""
     response = client.post(
-        "/api/face/register",
-        headers={"X-API-Key": "test_key"},
-        data={"user_id": 0}
+        "/api/face/register", headers={"X-API-Key": "test_key"}, data={"user_id": 0}
     )
     # Deve falhar na validacao (422) ou autenticacao (401)
     assert response.status_code in [401, 422]
@@ -105,23 +103,19 @@ def test_register_invalid_user_id_zero():
 def test_register_invalid_user_id_negative():
     """Testa cadastro com user_id negativo"""
     response = client.post(
-        "/api/face/register",
-        headers={"X-API-Key": "test_key"},
-        data={"user_id": -1}
+        "/api/face/register", headers={"X-API-Key": "test_key"}, data={"user_id": -1}
     )
     assert response.status_code in [401, 422]
 
 
 def test_register_missing_user_id():
     """Testa cadastro sem user_id"""
-    response = client.post(
-        "/api/face/register",
-        headers={"X-API-Key": "test_key"}
-    )
+    response = client.post("/api/face/register", headers={"X-API-Key": "test_key"})
     assert response.status_code in [401, 422]
 
 
 # ==================== TESTES DE FRONTEND ====================
+
 
 def test_frontend_route():
     """Testa rota do frontend"""
@@ -144,6 +138,7 @@ def test_frontend_recognize_route():
 
 # ==================== TESTES DE ERRO ====================
 
+
 def test_invalid_endpoint():
     """Testa endpoint inexistente"""
     response = client.get("/api/invalid")
@@ -158,12 +153,10 @@ def test_method_not_allowed():
 
 # ==================== TESTES DE SEGURANCA ====================
 
+
 def test_cors_headers():
     """Testa se headers CORS estao presentes"""
-    response = client.options(
-        "/api/tenants",
-        headers={"Origin": "http://localhost:3000"}
-    )
+    response = client.options("/api/tenants", headers={"Origin": "http://localhost:3000"})
     # OPTIONS pode retornar 200 ou 405 dependendo da config
     assert response.status_code in [200, 400, 405]
 
@@ -181,4 +174,5 @@ def test_no_sensitive_data_in_root():
 
 if __name__ == "__main__":
     import pytest
+
     pytest.main([__file__, "-v"])

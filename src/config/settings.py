@@ -1,9 +1,9 @@
 """
 Configuracoes gerais do Athena Face
 """
+
 import os
 from pathlib import Path
-from typing import List
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -14,7 +14,7 @@ FACE_MODEL_NAME = os.getenv("FACE_MODEL_NAME", "buffalo_l")
 FACE_DET_SIZE = (640, 640)
 
 # API
-API_HOST = os.getenv("API_HOST", "0.0.0.0")
+API_HOST = os.getenv("API_HOST", "0.0.0.0")  # nosec B104
 API_PORT = int(os.getenv("API_PORT", "8001"))
 API_RELOAD = os.getenv("API_RELOAD", "true").lower() == "true"
 
@@ -48,7 +48,8 @@ LOG_DIR.mkdir(exist_ok=True)
 # Exemplo: CORS_ORIGINS=https://app.exemplo.com,https://admin.exemplo.com
 _cors_origins_env = os.getenv("CORS_ORIGINS", "")
 
-def _parse_cors_origins() -> List[str]:
+
+def _parse_cors_origins() -> list[str]:
     """
     Parse CORS origins de forma segura.
     Se nao configurado ou vazio, retorna lista vazia (nenhuma origem permitida).
@@ -63,18 +64,17 @@ def _parse_cors_origins() -> List[str]:
         return ["*"]
 
     # Parsear lista de origens
-    origins = [
-        origin.strip()
-        for origin in _cors_origins_env.split(",")
-        if origin.strip()
-    ]
+    origins = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
 
     return origins
+
 
 CORS_ORIGINS = _parse_cors_origins()
 CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "true").lower() == "true"
 CORS_ALLOW_METHODS = os.getenv("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,OPTIONS").split(",")
-CORS_ALLOW_HEADERS = os.getenv("CORS_ALLOW_HEADERS", "Content-Type,Authorization,X-API-Key").split(",")
+CORS_ALLOW_HEADERS = os.getenv("CORS_ALLOW_HEADERS", "Content-Type,Authorization,X-API-Key").split(
+    ","
+)
 
 # Redis - Para rate limiting distribuido e cache
 REDIS_ENABLED = os.getenv("REDIS_ENABLED", "false").lower() == "true"
@@ -115,6 +115,7 @@ def is_production() -> bool:
 def validate_cors_config():
     """Valida configuracao de CORS e emite warnings se inseguro"""
     import logging
+
     logger = logging.getLogger(__name__)
 
     if "*" in CORS_ORIGINS and is_production():
