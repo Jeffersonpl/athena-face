@@ -1,0 +1,35 @@
+# =============================================================================
+# CODEOWNERS - Athena Face
+# =============================================================================
+# Usuarios que devem aprovar PRs para cada area do codigo
+# Documentacao: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# =============================================================================
+
+# Dono padrao para todo o repositorio
+* @Jeffersonpl
+
+# =============================================================================
+# Backend
+# =============================================================================
+/src/ @Jeffersonpl
+/tests/ @Jeffersonpl
+
+# =============================================================================
+# Frontend
+# =============================================================================
+/frontend/ @Jeffersonpl
+
+# =============================================================================
+# Infraestrutura e Deploy
+# =============================================================================
+/Dockerfile @Jeffersonpl
+/docker-compose*.yml @Jeffersonpl
+/.github/ @Jeffersonpl
+
+# =============================================================================
+# Configuracoes Criticas (requer aprovacao obrigatoria)
+# =============================================================================
+/.env.example @Jeffersonpl
+/migrations/ @Jeffersonpl
+/pyproject.toml @Jeffersonpl
+/requirements.txt @Jeffersonpl
