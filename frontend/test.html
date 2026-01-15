@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Athena Face</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        #result.success {
+            background: #d1fae5;
+            border: 2px solid #10b981;
+            color: #065f46;
+            display: block;
+        }
+
+        #result.error {
+            background: #fee2e2;
+            border: 2px solid #ef4444;
+            color: #991b1b;
+            display: block;
+        }
+
+        #result pre {
+            margin-top: 10px;
+            background: rgba(0,0,0,0.05);
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏛️ Teste Athena Face</h1>
+        <p>Configure os parâmetros e teste o reconhecimento facial</p>
+
+        <div class="form-group">
+            <label for="apiUrl">URL da API</label>
+            <input type="text" id="apiUrl" value="http://localhost:8001">
+        </div>
+
+        <div class="form-group">
+            <label for="apiKey">API Key</label>
+            <input type="text" id="apiKey" value="ig_prod_key_change_me" placeholder="ig_prod_XXXXXXXX">
+        </div>
+
+        <div class="form-group">
+            <label for="tenantId">Tenant ID</label>
+            <select id="tenantId">
+                <option value="ingressoglobal">Ingresso Global</option>
+                <option value="synorix">Synorix</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="userId">User ID</label>
+            <input type="number" id="userId" value="123" placeholder="123">
+        </div>
+
+        <div class="form-group">
+            <label for="mode">Modo</label>
+            <select id="mode">
+                <option value="register">Cadastro (Register)</option>
+                <option value="recognize">Reconhecimento (Recognize)</option>
+            </select>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-primary" onclick="openPopup()">
+                🚀 Abrir em Popup
+            </button>
+            <button class="btn-secondary" onclick="openIframe()">
+                📱 Abrir em Iframe
+            </button>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // Listener de mensagens
+        window.addEventListener('message', (event) => {
+            console.log('📨 Mensagem recebida:', event.data);
+
+            if (event.data.type === 'ATHENAFACE_RESULT') {
+                showResult(event.data);
+            }
+        });
+
+        function getUrl() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const tenantId = document.getElementById('tenantId').value;
+            const userId = document.getElementById('userId').value;
+            const mode = document.getElementById('mode').value;
+
+            const params = new URLSearchParams({
+                api_key: apiKey,
+                tenant_id: tenantId,
+                user_id: userId,
+                mode: mode
+            });
+
+            return `${apiUrl}/facial?${params.toString()}`;
+        }
+
+        function openPopup() {
+            const url = getUrl();
+            console.log('🔗 Abrindo URL:', url);
+
+            const popup = window.open(
+                url,
+                'AthenaFace',
+                'width=900,height=800,location=no,menubar=no'
+            );
+
+            if (!popup) {
+                alert('❌ Popup bloqueado! Permita popups para este site.');
+            }
+        }
+
+        function openIframe() {
+            const url = getUrl();
+            console.log('🔗 URL:', url);
+
+            const iframe = document.createElement('iframe');
+            iframe.src = url;
+            iframe.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                border: none;
+                z-index: 9999;
+            `;
+
+            document.body.appendChild(iframe);
+
+            // Botão para fechar
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '✕ Fechar';
+            closeBtn.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 10000;
+                padding: 10px 20px;
+                background: #ef4444;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-weight: bold;
+            `;
+            closeBtn.onclick = () => {
+                iframe.remove();
+                closeBtn.remove();
+            };
+
+            document.body.appendChild(closeBtn);
+        }
+
+        function showResult(data) {
+            const resultDiv = document.getElementById('result');
+            const result = data.result;
+
+            if (result.success || result.granted) {
+                resultDiv.className = 'success';
+                resultDiv.innerHTML = `
+                    <strong>✅ Sucesso!</strong>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } else {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <strong>❌ Falha</strong>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            }
+
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

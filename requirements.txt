@@ -1,0 +1,52 @@
+# ==================== Athena Face - Requirements ====================
+# Version: 2.0
+# Python: 3.10+
+
+# ==================== FastAPI Framework ====================
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+starlette==0.27.0
+
+# ==================== Computer Vision & AI ====================
+insightface==0.7.3
+onnxruntime==1.16.3
+opencv-python-headless==4.8.1.78
+numpy>=1.24.3,<2.0.0
+pillow>=10.1.0
+
+# ==================== Database ====================
+mysql-connector-python==8.2.0
+
+# ==================== Cache & Session (optional) ====================
+redis==5.0.1
+
+# ==================== Environment & Config ====================
+python-dotenv==1.0.0
+
+# ==================== Security ====================
+# Rate limiting, input validation
+slowapi==0.1.9
+
+# ==================== Monitoring & Logging ====================
+prometheus-client==0.19.0
+structlog==23.2.0
+
+# ==================== Testing ====================
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+httpx==0.25.2
+requests==2.31.0
+
+# ==================== Development (optional) ====================
+# Uncomment for development
+# black==23.11.0
+# ruff==0.1.6
+# mypy==1.7.1
+# pre-commit==3.6.0
+
+# ==================== Documentation (optional) ====================
+# Uncomment for API docs
+# mkdocs==1.5.3
+# mkdocs-material==9.5.2

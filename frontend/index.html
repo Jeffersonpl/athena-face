@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema de Reconhecimento Facial com Liveness Detection">
+
+    <title>Athena Face - Reconhecimento Facial</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Styles - CAMINHO CORRIGIDO -->
+    <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+    <!-- Background Gradient -->
+    <div class="background-gradient"></div>
+
+    <!-- App Container -->
+    <div class="app-container">
+
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1>🔐 Reconhecimento Facial</h1>
+                <p class="header-subtitle">Sistema com Detecção de Vida</p>
+                <p class="header-tenant" id="tenant-name">Carregando...</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- Status Card -->
+            <div id="status-card" class="status-card info">
+                <div class="status-icon">⏳</div>
+                <div class="status-text">Aguardando início</div>
+                <div class="status-details">Clique em "Iniciar Captura" para começar</div>
+            </div>
+
+            <!-- Challenge Box -->
+            <div id="challenge-box" class="challenge-box">
+                <div class="challenge-icon">👤</div>
+                <div class="challenge-text">Aguardando desafio...</div>
+                <div class="challenge-progress">
+                    <span class="progress-current">1</span>/<span class="progress-total">4</span>
+                </div>
+            </div>
+
+            <!-- Video Container -->
+            <div id="video-container" class="video-container" style="display: none;">
+                <video id="video" autoplay playsinline muted></video>
+                <canvas id="canvas-overlay"></canvas>
+
+                <!-- Face Guide Oval -->
+                <div class="face-guide">
+                    <div class="guide-oval"></div>
+                    <div class="guide-text">Centralize seu rosto</div>
+                </div>
+
+                <!-- Corner Guides -->
+                <div class="corner-guide top-left"></div>
+                <div class="corner-guide top-right"></div>
+                <div class="corner-guide bottom-left"></div>
+                <div class="corner-guide bottom-right"></div>
+            </div>
+
+            <!-- Security Checks -->
+            <div id="checks-container" class="checks-container">
+                <h3 class="checks-title">Verificações de Segurança</h3>
+                <div class="checks-grid">
+
+                    <div class="check-item">
+                        <div id="check-face" class="check-icon pending">
+                            <span class="icon">⏳</span>
+                        </div>
+                        <div class="check-content">
+                            <div class="check-label">Face Única</div>
+                            <div class="check-description">Detectando rosto...</div>
+                        </div>
+                    </div>
+
+                    <div class="check-item">
+                        <div id="check-quality" class="check-icon pending">
+                            <span class="icon">⏳</span>
+                        </div>
+                        <div class="check-content">
+                            <div class="check-label">Qualidade</div>
+                            <div class="check-description">Verificando nitidez...</div>
+                        </div>
+                    </div>
+
+                    <div class="check-item">
+                        <div id="check-position" class="check-icon pending">
+                            <span class="icon">⏳</span>
+                        </div>
+                        <div class="check-content">
+                            <div class="check-label">Posição</div>
+                            <div class="check-description">Centralize o rosto...</div>
+                        </div>
+                    </div>
+
+                    <div class="check-item">
+                        <div id="check-liveness" class="check-icon pending">
+                            <span class="icon">⏳</span>
+                        </div>
+                        <div class="check-content">
+                            <div class="check-label">Detecção de Vida</div>
+                            <div class="check-description">Complete os desafios...</div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                    <span class="progress-label">0%</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="button-group">
+                <button id="start-btn" class="btn btn-primary btn-lg">
+                    <span class="btn-icon">📷</span>
+                    <span class="btn-text">Iniciar Captura</span>
+                </button>
+
+                <button id="capture-btn" class="btn btn-success btn-lg" disabled style="display: none;">
+                    <span class="btn-icon">✓</span>
+                    <span class="btn-text">Capturar e Enviar</span>
+                </button>
+
+                <button id="retry-btn" class="btn btn-secondary btn-lg" style="display: none;">
+                    <span class="btn-icon">↻</span>
+                    <span class="btn-text">Tentar Novamente</span>
+                </button>
+
+                <button id="cancel-btn" class="btn btn-secondary">
+                    <span class="btn-icon">✕</span>
+                    <span class="btn-text">Cancelar</span>
+                </button>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Sistema de Reconhecimento Facial - Athena Face</p>
+            <p class="footer-tips">
+                💡 Dicas: Boa iluminação | Remova óculos escuros | Olhe para a câmera
+            </p>
+        </footer>
+
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <!-- MediaPipe CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/face_detection.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
+
+    <!-- Application Scripts - CAMINHOS CORRIGIDOS -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/mediapipe.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

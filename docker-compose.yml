@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  facial_recognition:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: athenaface_service
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      PYTHONPATH: /app
+      PYTHONUNBUFFERED: 1
+
+      # API
+      API_HOST: 0.0.0.0
+      API_PORT: 8001
+      API_RELOAD: ${API_RELOAD:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+      # Modelo
+      FACE_MODEL_NAME: ${FACE_MODEL_NAME:-buffalo_l}
+      DEFAULT_THRESHOLD: ${DEFAULT_THRESHOLD:-0.4}
+
+      # Liveness
+      ENABLE_LIVENESS_CHECK: ${ENABLE_LIVENESS_CHECK:-true}
+
+      # CORS
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+
+      # Tenant 1: Ingresso Global
+      TENANT_IG_DB_HOST: ${TENANT_IG_DB_HOST:-192.168.3.84}
+      TENANT_IG_DB_PORT: ${TENANT_IG_DB_PORT:-3306}
+      TENANT_IG_DB_NAME: ${TENANT_IG_DB_NAME:-ingressoglobal}
+      TENANT_IG_DB_USER: ${TENANT_IG_DB_USER:-root}
+      TENANT_IG_DB_PASS: ${TENANT_IG_DB_PASS:-secret@123}
+      TENANT_IG_API_KEY: ${TENANT_IG_API_KEY:-ig_prod_key_change_me}
+      TENANT_IG_THRESHOLD: ${TENANT_IG_THRESHOLD:-0.4}
+      TENANT_IG_RATE_LIMIT: ${TENANT_IG_RATE_LIMIT:-100}
+      TENANT_IG_ACTIVE: ${TENANT_IG_ACTIVE:-true}
+
+      # Tenant 2: Synorix
+      TENANT_SV_DB_HOST: ${TENANT_SV_DB_HOST:-192.168.3.84}
+      TENANT_SV_DB_PORT: ${TENANT_SV_DB_PORT:-3306}
+      TENANT_SV_DB_NAME: ${TENANT_SV_DB_NAME:-synorix}
+      TENANT_SV_DB_USER: ${TENANT_SV_DB_USER:-root}
+      TENANT_SV_DB_PASS: ${TENANT_SV_DB_PASS:-secret@123}
+      TENANT_SV_API_KEY: ${TENANT_SV_API_KEY:-sv_prod_key_change_me}
+      TENANT_SV_THRESHOLD: ${TENANT_SV_THRESHOLD:-0.4}
+      TENANT_SV_RATE_LIMIT: ${TENANT_SV_RATE_LIMIT:-100}
+      TENANT_SV_ACTIVE: ${TENANT_SV_ACTIVE:-true}
+
+    volumes:
+      # Hot reload para desenvolvimento
+      - ./src:/app/src:ro
+      - ./frontend:/app/frontend:ro
+      - ./logs:/app/logs
+      # Persistir modelos InsightFace
+      - facial_models:/root/.insightface
+
+    networks:
+      - facial_network
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8001 --reload
+
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import requests; requests.get(\"http://localhost:8001/health\", timeout=5)' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+volumes:
+  facial_models:
+    name: athenaface_models
+
+networks:
+  facial_network:
+    driver: bridge
+    name: athenaface_network
