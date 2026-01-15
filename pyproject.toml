@@ -26,6 +26,17 @@ exclude = '''
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "migrations",
+    "__pycache__",
+]
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -41,23 +52,18 @@ ignore = [
     "E501",   # line too long (handled by black)
     "S101",   # use of assert
     "S104",   # possible binding to all interfaces
+    "S110",   # try-except-pass (intentional in some cases)
+    "S112",   # try-except-continue (intentional in some cases)
     "B008",   # do not perform function calls in argument defaults
-]
-exclude = [
-    ".git",
-    ".mypy_cache",
-    ".ruff_cache",
-    ".venv",
-    "venv",
-    "migrations",
-    "__pycache__",
+    "B904",   # raise from in except (too verbose for simple cases)
+    "N805",   # first argument of method should be self (pydantic validators use cls)
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "S105", "S106"]
 "**/test_*.py" = ["S101", "S105", "S106"]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["src"]
 
 [tool.mypy]

@@ -5,35 +5,34 @@ Athena Face - API Principal Multi-Tenant
 import json
 import logging
 import uuid
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Optional, Dict, Any, Generator
+from typing import Any
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends, Request, Query
+import uvicorn
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, validator
-import uvicorn
 
 from src.config.settings import (
     API_HOST,
     API_PORT,
     API_RELOAD,
-    CORS_ORIGINS,
-    CORS_ALLOW_METHODS,
-    CORS_ALLOW_HEADERS,
+    BASE_DIR,
     CORS_ALLOW_CREDENTIALS,
+    CORS_ALLOW_HEADERS,
+    CORS_ALLOW_METHODS,
+    CORS_ORIGINS,
     DEFAULT_THRESHOLD,
     ENABLE_LIVENESS_CHECK,
-    BASE_DIR,
-    MIN_FACE_SIZE,
-    MAX_UPLOAD_SIZE,
     is_production,
 )
 from src.config.tenants import list_active_tenants
-from src.middleware.tenant_middleware import verify_tenant_api_key, get_tenant_from_request
-from src.models.database import get_tenant_db_connection, test_tenant_connection
+from src.middleware.tenant_middleware import verify_tenant_api_key
+from src.models.database import get_tenant_db_connection
 from src.services.face_service import FaceService
 from src.services.liveness_service import LivenessService
 from src.utils.image_utils import image_to_array
@@ -53,7 +52,7 @@ liveness_service = LivenessService()
 
 
 @contextmanager
-def get_db_cursor(tenant_config: Dict, dictionary: bool = False) -> Generator:
+def get_db_cursor(tenant_config: dict, dictionary: bool = False) -> Generator:
     """
     Context manager para conexão segura com o banco de dados.
     Garante que conexões são fechadas mesmo em caso de erro.
@@ -64,7 +63,7 @@ def get_db_cursor(tenant_config: Dict, dictionary: bool = False) -> Generator:
         conn = get_tenant_db_connection(tenant_config)
         cursor = conn.cursor(dictionary=dictionary) if dictionary else conn.cursor()
         yield conn, cursor
-    except Exception as e:
+    except Exception:
         if conn:
             conn.rollback()
         raise
@@ -157,7 +156,7 @@ app.add_middleware(
 FRONTEND_DIR = BASE_DIR / "frontend"
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
-    logger.info(f"Frontend montado em /static")
+    logger.info("Frontend montado em /static")
 
 
 # ==================== LIFECYCLE EVENTS ====================
@@ -204,7 +203,7 @@ async def shutdown_event():
 
 
 @app.get("/")
-def read_root() -> Dict[str, Any]:
+def read_root() -> dict[str, Any]:
     """Informações do serviço"""
     tenants = list_active_tenants()
 
@@ -233,7 +232,7 @@ def read_root() -> Dict[str, Any]:
 
 
 @app.get("/health")
-def health_check() -> Dict[str, Any]:
+def health_check() -> dict[str, Any]:
     """
     Health check endpoint com verificação de componentes.
     Útil para Kubernetes/Docker health probes.
@@ -416,8 +415,8 @@ async def register_face(
 async def recognize_face(
     request: Request,
     image: UploadFile = File(..., description="Imagem com face para reconhecimento"),
-    turnstile_id: Optional[int] = Form(None, ge=0, description="ID da catraca"),
-    event_id: Optional[int] = Form(None, ge=0, description="ID do evento"),
+    turnstile_id: int | None = Form(None, ge=0, description="ID da catraca"),
+    event_id: int | None = Form(None, ge=0, description="ID do evento"),
     tenant_data: dict = Depends(verify_tenant_api_key),
 ):
     """
@@ -636,7 +635,7 @@ async def compare_faces(
 
 
 @app.get("/api/tenants")
-def list_tenants() -> Dict[str, Any]:
+def list_tenants() -> dict[str, Any]:
     """
     Lista tenants ativos (endpoint público)
     """
@@ -675,7 +674,7 @@ def increment_metric(name: str, value: int = 1):
 @app.get("/api/metrics")
 async def get_metrics(
     request: Request, tenant_data: dict = Depends(verify_tenant_api_key)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Retorna métricas do sistema
 

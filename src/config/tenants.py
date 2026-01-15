@@ -6,9 +6,8 @@ IMPORTANTE: Todas as credenciais devem vir de variaveis de ambiente!
 Nunca commitar credenciais no codigo.
 """
 
-import os
 import logging
-from typing import Dict, Optional
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ _DEFAULT_THRESHOLD = "0.4"
 _DEFAULT_RATE_LIMIT = "100"
 
 
-def _load_tenant_from_env(prefix: str, name: str) -> Optional[Dict]:
+def _load_tenant_from_env(prefix: str, name: str) -> dict | None:
     """
     Carrega configuracao de um tenant a partir de variaveis de ambiente.
 
@@ -62,7 +61,7 @@ def _load_tenant_from_env(prefix: str, name: str) -> Optional[Dict]:
     return config
 
 
-def _build_tenants_config() -> Dict[str, Dict]:
+def _build_tenants_config() -> dict[str, dict]:
     """
     Constroi a configuracao de todos os tenants a partir das variaveis de ambiente.
 
@@ -107,7 +106,7 @@ def reload_tenants_config():
     logger.info(f"Configuracao de tenants recarregada: {len(TENANTS_CONFIG)} tenants")
 
 
-def get_tenant_config(tenant_id: str) -> Optional[Dict]:
+def get_tenant_config(tenant_id: str) -> dict | None:
     """
     Retorna configuracao do tenant
 
@@ -128,7 +127,7 @@ def get_tenant_config(tenant_id: str) -> Optional[Dict]:
     return config
 
 
-def get_tenant_by_api_key(api_key: str) -> Optional[Dict]:
+def get_tenant_by_api_key(api_key: str) -> dict | None:
     """
     Busca tenant pela API Key
 
@@ -148,7 +147,7 @@ def get_tenant_by_api_key(api_key: str) -> Optional[Dict]:
     return None
 
 
-def list_active_tenants() -> Dict[str, str]:
+def list_active_tenants() -> dict[str, str]:
     """
     Lista todos os tenants ativos
 
@@ -162,7 +161,7 @@ def list_active_tenants() -> Dict[str, str]:
     }
 
 
-def validate_tenant_config(tenant_id: str) -> Dict:
+def validate_tenant_config(tenant_id: str) -> dict:
     """
     Valida a configuracao de um tenant e retorna status detalhado.
 

@@ -3,11 +3,12 @@ Utilitários para processamento de imagens
 """
 
 import base64
-import numpy as np
 from io import BytesIO
-from PIL import Image
+
 import cv2
+import numpy as np
 from fastapi import HTTPException, UploadFile
+from PIL import Image
 
 
 def image_to_array(image_file: UploadFile) -> np.ndarray:

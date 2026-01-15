@@ -2,10 +2,9 @@
 Testes unitarios para o LivenessService
 """
 
-import pytest
-import numpy as np
 import cv2
-from unittest.mock import patch, MagicMock
+import numpy as np
+import pytest
 
 from src.services.liveness_service import LivenessService
 

@@ -4,17 +4,15 @@ Suporta rate limiting em memoria (desenvolvimento) ou Redis (producao)
 """
 
 import logging
-import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Optional
 
-from fastapi import Request, HTTPException, status
+from fastapi import HTTPException, Request, status
 from fastapi.security import APIKeyHeader
 
+from src.config.settings import REDIS_DB, REDIS_ENABLED, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT
 from src.config.tenants import get_tenant_by_api_key
-from src.config.settings import REDIS_ENABLED, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_DB
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +155,7 @@ class RedisRateLimiter(RateLimiter):
 
 # ==================== Rate Limiter Factory ====================
 
-_rate_limiter: Optional[RateLimiter] = None
+_rate_limiter: RateLimiter | None = None
 
 
 def get_rate_limiter() -> RateLimiter:
@@ -183,7 +181,7 @@ def get_rate_limiter() -> RateLimiter:
 # ==================== Middleware Functions ====================
 
 
-async def verify_tenant_api_key(request: Request, api_key: Optional[str] = None) -> dict:
+async def verify_tenant_api_key(request: Request, api_key: str | None = None) -> dict:
     """
     Verifica API Key e identifica tenant
 

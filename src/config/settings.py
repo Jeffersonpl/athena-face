@@ -4,7 +4,6 @@ Configuracoes gerais do Athena Face
 
 import os
 from pathlib import Path
-from typing import List
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -15,7 +14,7 @@ FACE_MODEL_NAME = os.getenv("FACE_MODEL_NAME", "buffalo_l")
 FACE_DET_SIZE = (640, 640)
 
 # API
-API_HOST = os.getenv("API_HOST", "0.0.0.0")
+API_HOST = os.getenv("API_HOST", "0.0.0.0")  # nosec B104
 API_PORT = int(os.getenv("API_PORT", "8001"))
 API_RELOAD = os.getenv("API_RELOAD", "true").lower() == "true"
 
@@ -50,7 +49,7 @@ LOG_DIR.mkdir(exist_ok=True)
 _cors_origins_env = os.getenv("CORS_ORIGINS", "")
 
 
-def _parse_cors_origins() -> List[str]:
+def _parse_cors_origins() -> list[str]:
     """
     Parse CORS origins de forma segura.
     Se nao configurado ou vazio, retorna lista vazia (nenhuma origem permitida).

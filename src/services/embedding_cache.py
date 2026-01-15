@@ -5,21 +5,19 @@ Melhora performance do reconhecimento facial cacheando embeddings em memoria ou 
 
 import json
 import logging
-import hashlib
+import threading
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-import threading
 
 from src.config.settings import (
-    REDIS_ENABLED,
-    REDIS_HOST,
-    REDIS_PORT,
-    REDIS_PASSWORD,
-    REDIS_DB,
     EMBEDDING_CACHE_ENABLED,
     EMBEDDING_CACHE_TTL,
+    REDIS_DB,
+    REDIS_ENABLED,
+    REDIS_HOST,
+    REDIS_PASSWORD,
+    REDIS_PORT,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,12 +27,12 @@ class EmbeddingCache(ABC):
     """Interface para cache de embeddings"""
 
     @abstractmethod
-    def get(self, tenant_id: str, user_id: int) -> Optional[List[float]]:
+    def get(self, tenant_id: str, user_id: int) -> list[float] | None:
         """Busca embedding do cache"""
         pass
 
     @abstractmethod
-    def set(self, tenant_id: str, user_id: int, embedding: List[float], ttl: int = None) -> bool:
+    def set(self, tenant_id: str, user_id: int, embedding: list[float], ttl: int = None) -> bool:
         """Salva embedding no cache"""
         pass
 
@@ -44,7 +42,7 @@ class EmbeddingCache(ABC):
         pass
 
     @abstractmethod
-    def get_all_embeddings(self, tenant_id: str) -> Dict[int, List[float]]:
+    def get_all_embeddings(self, tenant_id: str) -> dict[int, list[float]]:
         """Busca todos os embeddings de um tenant"""
         pass
 
@@ -54,7 +52,7 @@ class EmbeddingCache(ABC):
         pass
 
     @abstractmethod
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Retorna estatisticas do cache"""
         pass
 
@@ -67,7 +65,7 @@ class InMemoryEmbeddingCache(EmbeddingCache):
 
     def __init__(self, max_size: int = 10000, default_ttl: int = 3600):
         self._cache: OrderedDict = OrderedDict()
-        self._expiry: Dict[str, datetime] = {}
+        self._expiry: dict[str, datetime] = {}
         self._max_size = max_size
         self._default_ttl = default_ttl
         self._lock = threading.Lock()
@@ -103,7 +101,7 @@ class InMemoryEmbeddingCache(EmbeddingCache):
                 del self._cache[key]
             del self._expiry[key]
 
-    def get(self, tenant_id: str, user_id: int) -> Optional[List[float]]:
+    def get(self, tenant_id: str, user_id: int) -> list[float] | None:
         key = self._make_key(tenant_id, user_id)
 
         with self._lock:
@@ -116,7 +114,7 @@ class InMemoryEmbeddingCache(EmbeddingCache):
             self._hits += 1
             return self._cache[key]
 
-    def set(self, tenant_id: str, user_id: int, embedding: List[float], ttl: int = None) -> bool:
+    def set(self, tenant_id: str, user_id: int, embedding: list[float], ttl: int = None) -> bool:
         key = self._make_key(tenant_id, user_id)
         ttl = ttl or self._default_ttl
 
@@ -136,7 +134,7 @@ class InMemoryEmbeddingCache(EmbeddingCache):
                 del self._expiry[key]
             return True
 
-    def get_all_embeddings(self, tenant_id: str) -> Dict[int, List[float]]:
+    def get_all_embeddings(self, tenant_id: str) -> dict[int, list[float]]:
         prefix = f"{tenant_id}:user:"
         result = {}
 
@@ -165,7 +163,7 @@ class InMemoryEmbeddingCache(EmbeddingCache):
 
         return count
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         total_requests = self._hits + self._misses
         hit_rate = self._hits / total_requests if total_requests > 0 else 0
 
@@ -220,7 +218,7 @@ class RedisEmbeddingCache(EmbeddingCache):
     def _make_key(self, tenant_id: str, user_id: int) -> str:
         return f"embedding:{tenant_id}:user:{user_id}"
 
-    def get(self, tenant_id: str, user_id: int) -> Optional[List[float]]:
+    def get(self, tenant_id: str, user_id: int) -> list[float] | None:
         key = self._make_key(tenant_id, user_id)
 
         try:
@@ -236,7 +234,7 @@ class RedisEmbeddingCache(EmbeddingCache):
             self._misses += 1
             return None
 
-    def set(self, tenant_id: str, user_id: int, embedding: List[float], ttl: int = None) -> bool:
+    def set(self, tenant_id: str, user_id: int, embedding: list[float], ttl: int = None) -> bool:
         key = self._make_key(tenant_id, user_id)
         ttl = ttl or self._default_ttl
 
@@ -258,7 +256,7 @@ class RedisEmbeddingCache(EmbeddingCache):
             logger.error(f"Erro ao deletar do cache Redis: {e}")
             return False
 
-    def get_all_embeddings(self, tenant_id: str) -> Dict[int, List[float]]:
+    def get_all_embeddings(self, tenant_id: str) -> dict[int, list[float]]:
         pattern = f"embedding:{tenant_id}:user:*"
         result = {}
 
@@ -304,7 +302,7 @@ class RedisEmbeddingCache(EmbeddingCache):
 
         return count
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         total_requests = self._hits + self._misses
         hit_rate = self._hits / total_requests if total_requests > 0 else 0
 
@@ -326,28 +324,28 @@ class RedisEmbeddingCache(EmbeddingCache):
 class NoOpEmbeddingCache(EmbeddingCache):
     """Cache desabilitado - nao faz nada"""
 
-    def get(self, tenant_id: str, user_id: int) -> Optional[List[float]]:
+    def get(self, tenant_id: str, user_id: int) -> list[float] | None:
         return None
 
-    def set(self, tenant_id: str, user_id: int, embedding: List[float], ttl: int = None) -> bool:
+    def set(self, tenant_id: str, user_id: int, embedding: list[float], ttl: int = None) -> bool:
         return True
 
     def delete(self, tenant_id: str, user_id: int) -> bool:
         return True
 
-    def get_all_embeddings(self, tenant_id: str) -> Dict[int, List[float]]:
+    def get_all_embeddings(self, tenant_id: str) -> dict[int, list[float]]:
         return {}
 
     def invalidate_tenant(self, tenant_id: str) -> int:
         return 0
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         return {"type": "disabled"}
 
 
 # ==================== Factory ====================
 
-_embedding_cache: Optional[EmbeddingCache] = None
+_embedding_cache: EmbeddingCache | None = None
 
 
 def get_embedding_cache() -> EmbeddingCache:
@@ -373,7 +371,7 @@ def get_embedding_cache() -> EmbeddingCache:
     return _embedding_cache
 
 
-def warm_cache_for_tenant(tenant_id: str, embeddings: Dict[int, List[float]]) -> int:
+def warm_cache_for_tenant(tenant_id: str, embeddings: dict[int, list[float]]) -> int:
     """
     Pre-popula o cache com embeddings de um tenant.
 

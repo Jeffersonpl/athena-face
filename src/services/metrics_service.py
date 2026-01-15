@@ -5,10 +5,10 @@ Fornece metricas Prometheus e endpoints de health check
 
 import logging
 import time
+from collections import defaultdict
+from collections.abc import Callable
 from datetime import datetime
 from functools import wraps
-from typing import Callable, Dict, Optional
-from collections import defaultdict
 
 from src.config.settings import METRICS_ENABLED
 
@@ -25,20 +25,20 @@ class MetricsCollector:
     """
 
     def __init__(self):
-        self._counters: Dict[str, int] = defaultdict(int)
-        self._histograms: Dict[str, list] = defaultdict(list)
-        self._gauges: Dict[str, float] = {}
+        self._counters: dict[str, int] = defaultdict(int)
+        self._histograms: dict[str, list] = defaultdict(list)
+        self._gauges: dict[str, float] = {}
         self._start_time = datetime.now()
 
         # Limitar historico de histogramas
         self._max_histogram_size = 1000
 
-    def increment_counter(self, name: str, value: int = 1, labels: Dict = None):
+    def increment_counter(self, name: str, value: int = 1, labels: dict = None):
         """Incrementa um contador"""
         key = self._make_key(name, labels)
         self._counters[key] += value
 
-    def observe_histogram(self, name: str, value: float, labels: Dict = None):
+    def observe_histogram(self, name: str, value: float, labels: dict = None):
         """Adiciona observacao a um histograma"""
         key = self._make_key(name, labels)
         self._histograms[key].append(value)
@@ -47,22 +47,22 @@ class MetricsCollector:
         if len(self._histograms[key]) > self._max_histogram_size:
             self._histograms[key] = self._histograms[key][-self._max_histogram_size :]
 
-    def set_gauge(self, name: str, value: float, labels: Dict = None):
+    def set_gauge(self, name: str, value: float, labels: dict = None):
         """Define valor de um gauge"""
         key = self._make_key(name, labels)
         self._gauges[key] = value
 
-    def _make_key(self, name: str, labels: Dict = None) -> str:
+    def _make_key(self, name: str, labels: dict = None) -> str:
         if not labels:
             return name
         label_str = ",".join(f"{k}={v}" for k, v in sorted(labels.items()))
         return f"{name}{{{label_str}}}"
 
-    def get_counter(self, name: str, labels: Dict = None) -> int:
+    def get_counter(self, name: str, labels: dict = None) -> int:
         key = self._make_key(name, labels)
         return self._counters.get(key, 0)
 
-    def get_histogram_stats(self, name: str, labels: Dict = None) -> Dict:
+    def get_histogram_stats(self, name: str, labels: dict = None) -> dict:
         key = self._make_key(name, labels)
         values = self._histograms.get(key, [])
 
@@ -92,7 +92,7 @@ class MetricsCollector:
             "p99": sorted_values[int(count * 0.99)] if count >= 100 else sorted_values[-1],
         }
 
-    def get_all_metrics(self) -> Dict:
+    def get_all_metrics(self) -> dict:
         """Retorna todas as metricas"""
         return {
             "uptime_seconds": (datetime.now() - self._start_time).total_seconds(),
@@ -132,7 +132,7 @@ def track_request_time(name: str = "request_duration_seconds"):
                 result = await func(*args, **kwargs)
                 metrics.increment_counter(f"{name}_total", labels={"status": "success"})
                 return result
-            except Exception as e:
+            except Exception:
                 metrics.increment_counter(f"{name}_total", labels={"status": "error"})
                 raise
             finally:
@@ -264,8 +264,8 @@ def get_prometheus_metrics() -> str:
     all_metrics = metrics.get_all_metrics()
 
     # Uptime
-    lines.append(f"# HELP athenaface_uptime_seconds Tempo desde o inicio do servico")
-    lines.append(f"# TYPE athenaface_uptime_seconds gauge")
+    lines.append("# HELP athenaface_uptime_seconds Tempo desde o inicio do servico")
+    lines.append("# TYPE athenaface_uptime_seconds gauge")
     lines.append(f"athenaface_uptime_seconds {all_metrics['uptime_seconds']:.2f}")
     lines.append("")
 
@@ -302,17 +302,17 @@ def get_prometheus_metrics() -> str:
 # ==================== Health Check ====================
 
 
-def get_health_status() -> Dict:
+def get_health_status() -> dict:
     """
     Retorna status de saude do servico.
     Util para health checks do Kubernetes/Docker.
     """
-    from src.services.face_service import FaceService
     from src.middleware.tenant_middleware import get_rate_limiter
     from src.services.embedding_cache import get_embedding_cache
+    from src.services.face_service import FaceService
 
     face_service = FaceService()
-    rate_limiter = get_rate_limiter()
+    get_rate_limiter()
     cache = get_embedding_cache()
 
     checks = {

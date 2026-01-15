@@ -3,15 +3,16 @@ Servico de Reconhecimento Facial v2.0
 Athena Face - InsightFace Integration
 """
 
-import numpy as np
-from pathlib import Path
-from typing import Optional, List, Dict, Tuple, Any
+import hashlib
+import logging
 from dataclasses import dataclass
 from enum import Enum
-import logging
-import hashlib
+from pathlib import Path
+from typing import Any
 
-from src.config.settings import MODELS_DIR, FACE_MODEL_NAME, FACE_DET_SIZE
+import numpy as np
+
+from src.config.settings import FACE_DET_SIZE, FACE_MODEL_NAME, MODELS_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,9 @@ class FaceQuality(Enum):
 class FaceResult:
     """Resultado da deteccao de face"""
 
-    embedding: List[float]
-    bbox: Dict[str, float]
-    landmarks: Optional[List[List[float]]]
+    embedding: list[float]
+    bbox: dict[str, float]
+    landmarks: list[list[float]] | None
     quality_score: float
     quality_level: FaceQuality
     det_score: float
@@ -62,7 +63,7 @@ class FaceService:
         self.face_app = None
         self.model_name = FACE_MODEL_NAME
         self.det_size = FACE_DET_SIZE
-        self._model_hash: Optional[str] = None
+        self._model_hash: str | None = None
 
     def initialize(self) -> bool:
         """
@@ -126,7 +127,7 @@ class FaceService:
         """Verifica se modelo esta carregado"""
         return self.face_app is not None
 
-    def get_model_info(self) -> Dict:
+    def get_model_info(self) -> dict:
         """Retorna informacoes do modelo"""
         return {
             "name": self.model_name,
@@ -137,7 +138,7 @@ class FaceService:
             "version": "2.0",
         }
 
-    def detect_faces(self, image_array: np.ndarray, max_faces: int = 10) -> List[Any]:
+    def detect_faces(self, image_array: np.ndarray, max_faces: int = 10) -> list[Any]:
         """
         Detecta faces na imagem
 
@@ -166,7 +167,7 @@ class FaceService:
         image_array: np.ndarray,
         allow_multiple: bool = False,
         min_quality: FaceQuality = FaceQuality.ACCEPTABLE,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """
         Extrai embedding da face detectada
 
@@ -269,7 +270,7 @@ class FaceService:
 
     def extract_all_embeddings(
         self, image_array: np.ndarray, min_quality: FaceQuality = FaceQuality.POOR
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Extrai embeddings de todas as faces na imagem
 
@@ -350,7 +351,7 @@ class FaceService:
         else:
             return FaceQuality.REJECTED
 
-    def calculate_distance(self, embedding1: List[float], embedding2: List[float]) -> float:
+    def calculate_distance(self, embedding1: list[float], embedding2: list[float]) -> float:
         """
         Calcula distancia euclidiana entre dois embeddings
 
@@ -364,7 +365,7 @@ class FaceService:
         return float(np.linalg.norm(np.array(embedding1) - np.array(embedding2)))
 
     def calculate_cosine_similarity(
-        self, embedding1: List[float], embedding2: List[float]
+        self, embedding1: list[float], embedding2: list[float]
     ) -> float:
         """
         Calcula similaridade de cosseno entre dois embeddings
@@ -402,8 +403,8 @@ class FaceService:
         return float(max(0, 1 - (distance / threshold)))
 
     def compare_embeddings(
-        self, embedding1: List[float], embedding2: List[float], threshold: float
-    ) -> Dict:
+        self, embedding1: list[float], embedding2: list[float], threshold: float
+    ) -> dict:
         """
         Compara dois embeddings
 
@@ -440,8 +441,8 @@ class FaceService:
         }
 
     def find_best_match(
-        self, target_embedding: List[float], candidates: List[Dict], threshold: float
-    ) -> Optional[Dict]:
+        self, target_embedding: list[float], candidates: list[dict], threshold: float
+    ) -> dict | None:
         """
         Encontra o melhor match entre candidatos
 
@@ -472,7 +473,7 @@ class FaceService:
 
         return best_match
 
-    def validate_embedding(self, embedding: List[float]) -> Tuple[bool, str]:
+    def validate_embedding(self, embedding: list[float]) -> tuple[bool, str]:
         """
         Valida se um embedding e valido
 
