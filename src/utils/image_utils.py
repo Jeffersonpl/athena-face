@@ -1,6 +1,7 @@
 """
 Utilitários para processamento de imagens
 """
+
 import base64
 import numpy as np
 from io import BytesIO
@@ -30,8 +31,8 @@ def image_to_array(image_file: UploadFile) -> np.ndarray:
         image = Image.open(BytesIO(image_bytes))
 
         # Converter para RGB se necessário
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
         # Converter para numpy array
         image_array = np.array(image)
@@ -42,10 +43,7 @@ def image_to_array(image_file: UploadFile) -> np.ndarray:
         return image_array
 
     except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Erro ao processar imagem: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Erro ao processar imagem: {str(e)}")
 
 
 def base64_to_array(base64_string: str) -> np.ndarray:
@@ -63,8 +61,8 @@ def base64_to_array(base64_string: str) -> np.ndarray:
     """
     try:
         # Remover prefix se existir (data:image/png;base64,)
-        if ',' in base64_string:
-            base64_string = base64_string.split(',')[1]
+        if "," in base64_string:
+            base64_string = base64_string.split(",")[1]
 
         # Decodificar base64
         image_data = base64.b64decode(base64_string)
@@ -73,8 +71,8 @@ def base64_to_array(base64_string: str) -> np.ndarray:
         image = Image.open(BytesIO(image_data))
 
         # Converter para RGB se necessário
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
         # Converter para numpy array
         image_array = np.array(image)
@@ -85,10 +83,7 @@ def base64_to_array(base64_string: str) -> np.ndarray:
         return image_array
 
     except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Erro ao processar imagem base64: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Erro ao processar imagem base64: {str(e)}")
 
 
 def validate_image_quality(image_array: np.ndarray) -> dict:
@@ -123,5 +118,5 @@ def validate_image_quality(image_array: np.ndarray) -> dict:
         "blur_score": float(blur_score),
         "brightness_ok": brightness_ok,
         "brightness": float(brightness),
-        "quality_ok": resolution_ok and blur_ok and brightness_ok
+        "quality_ok": resolution_ok and blur_ok and brightness_ok,
     }

@@ -5,6 +5,7 @@ Cada tenant tem seu proprio banco de dados e API key
 IMPORTANTE: Todas as credenciais devem vir de variaveis de ambiente!
 Nunca commitar credenciais no codigo.
 """
+
 import os
 import logging
 from typing import Dict, Optional
@@ -142,10 +143,7 @@ def get_tenant_by_api_key(api_key: str) -> Optional[Dict]:
 
     for tenant_id, config in TENANTS_CONFIG.items():
         if config.get("api_key") == api_key and config.get("active", False):
-            return {
-                "tenant_id": tenant_id,
-                "config": config
-            }
+            return {"tenant_id": tenant_id, "config": config}
 
     return None
 
@@ -177,10 +175,7 @@ def validate_tenant_config(tenant_id: str) -> Dict:
     config = TENANTS_CONFIG.get(tenant_id)
 
     if not config:
-        return {
-            "valid": False,
-            "errors": ["Tenant nao encontrado"]
-        }
+        return {"valid": False, "errors": ["Tenant nao encontrado"]}
 
     errors = []
     warnings = []
@@ -209,6 +204,6 @@ def validate_tenant_config(tenant_id: str) -> Dict:
             "db_name": config.get("db_name"),
             "threshold": config.get("threshold"),
             "rate_limit": config.get("rate_limit"),
-            "active": config.get("active")
-        }
+            "active": config.get("active"),
+        },
     }

@@ -1,6 +1,7 @@
 """
 Configuracoes gerais do Athena Face
 """
+
 import os
 from pathlib import Path
 from typing import List
@@ -48,6 +49,7 @@ LOG_DIR.mkdir(exist_ok=True)
 # Exemplo: CORS_ORIGINS=https://app.exemplo.com,https://admin.exemplo.com
 _cors_origins_env = os.getenv("CORS_ORIGINS", "")
 
+
 def _parse_cors_origins() -> List[str]:
     """
     Parse CORS origins de forma segura.
@@ -63,18 +65,17 @@ def _parse_cors_origins() -> List[str]:
         return ["*"]
 
     # Parsear lista de origens
-    origins = [
-        origin.strip()
-        for origin in _cors_origins_env.split(",")
-        if origin.strip()
-    ]
+    origins = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
 
     return origins
+
 
 CORS_ORIGINS = _parse_cors_origins()
 CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "true").lower() == "true"
 CORS_ALLOW_METHODS = os.getenv("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,OPTIONS").split(",")
-CORS_ALLOW_HEADERS = os.getenv("CORS_ALLOW_HEADERS", "Content-Type,Authorization,X-API-Key").split(",")
+CORS_ALLOW_HEADERS = os.getenv("CORS_ALLOW_HEADERS", "Content-Type,Authorization,X-API-Key").split(
+    ","
+)
 
 # Redis - Para rate limiting distribuido e cache
 REDIS_ENABLED = os.getenv("REDIS_ENABLED", "false").lower() == "true"
@@ -115,6 +116,7 @@ def is_production() -> bool:
 def validate_cors_config():
     """Valida configuracao de CORS e emite warnings se inseguro"""
     import logging
+
     logger = logging.getLogger(__name__)
 
     if "*" in CORS_ORIGINS and is_production():

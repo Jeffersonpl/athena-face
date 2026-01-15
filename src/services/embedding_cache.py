@@ -2,6 +2,7 @@
 Servico de Cache de Embeddings
 Melhora performance do reconhecimento facial cacheando embeddings em memoria ou Redis
 """
+
 import json
 import logging
 import hashlib
@@ -12,8 +13,13 @@ from typing import Dict, List, Optional, Tuple
 import threading
 
 from src.config.settings import (
-    REDIS_ENABLED, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_DB,
-    EMBEDDING_CACHE_ENABLED, EMBEDDING_CACHE_TTL
+    REDIS_ENABLED,
+    REDIS_HOST,
+    REDIS_PORT,
+    REDIS_PASSWORD,
+    REDIS_DB,
+    EMBEDDING_CACHE_ENABLED,
+    EMBEDDING_CACHE_TTL,
 )
 
 logger = logging.getLogger(__name__)
@@ -91,10 +97,7 @@ class InMemoryEmbeddingCache(EmbeddingCache):
     def _cleanup_expired(self):
         """Remove itens expirados"""
         now = datetime.now()
-        expired_keys = [
-            key for key, exp_time in self._expiry.items()
-            if exp_time < now
-        ]
+        expired_keys = [key for key, exp_time in self._expiry.items() if exp_time < now]
         for key in expired_keys:
             if key in self._cache:
                 del self._cache[key]
@@ -152,10 +155,7 @@ class InMemoryEmbeddingCache(EmbeddingCache):
         count = 0
 
         with self._lock:
-            keys_to_delete = [
-                key for key in self._cache.keys()
-                if key.startswith(prefix)
-            ]
+            keys_to_delete = [key for key in self._cache.keys() if key.startswith(prefix)]
 
             for key in keys_to_delete:
                 del self._cache[key]
@@ -179,7 +179,7 @@ class InMemoryEmbeddingCache(EmbeddingCache):
             "misses": self._misses,
             "hit_rate": round(hit_rate, 4),
             "current_size": current_size,
-            "max_size": self._max_size
+            "max_size": self._max_size,
         }
 
 
@@ -194,6 +194,7 @@ class RedisEmbeddingCache(EmbeddingCache):
 
         try:
             import redis
+
             self._redis = redis.Redis(
                 host=REDIS_HOST,
                 port=REDIS_PORT,
@@ -201,7 +202,7 @@ class RedisEmbeddingCache(EmbeddingCache):
                 db=REDIS_DB,
                 decode_responses=True,
                 socket_timeout=5,
-                socket_connect_timeout=5
+                socket_connect_timeout=5,
             )
             self._redis.ping()
             logger.info(f"Cache Redis conectado em {REDIS_HOST}:{REDIS_PORT}")
@@ -318,7 +319,7 @@ class RedisEmbeddingCache(EmbeddingCache):
             "hits": self._hits,
             "misses": self._misses,
             "hit_rate": round(hit_rate, 4),
-            "memory_used": memory_used
+            "memory_used": memory_used,
         }
 
 

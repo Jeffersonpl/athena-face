@@ -2,6 +2,7 @@
 Servico de Metricas e Monitoramento
 Fornece metricas Prometheus e endpoints de health check
 """
+
 import logging
 import time
 from datetime import datetime
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 # ==================== Metricas Internas ====================
+
 
 class MetricsCollector:
     """
@@ -43,7 +45,7 @@ class MetricsCollector:
 
         # Limitar tamanho
         if len(self._histograms[key]) > self._max_histogram_size:
-            self._histograms[key] = self._histograms[key][-self._max_histogram_size:]
+            self._histograms[key] = self._histograms[key][-self._max_histogram_size :]
 
     def set_gauge(self, name: str, value: float, labels: Dict = None):
         """Define valor de um gauge"""
@@ -65,7 +67,16 @@ class MetricsCollector:
         values = self._histograms.get(key, [])
 
         if not values:
-            return {"count": 0, "sum": 0, "avg": 0, "min": 0, "max": 0, "p50": 0, "p95": 0, "p99": 0}
+            return {
+                "count": 0,
+                "sum": 0,
+                "avg": 0,
+                "min": 0,
+                "max": 0,
+                "p50": 0,
+                "p95": 0,
+                "p99": 0,
+            }
 
         sorted_values = sorted(values)
         count = len(values)
@@ -78,7 +89,7 @@ class MetricsCollector:
             "max": max(values),
             "p50": sorted_values[int(count * 0.5)],
             "p95": sorted_values[int(count * 0.95)] if count >= 20 else sorted_values[-1],
-            "p99": sorted_values[int(count * 0.99)] if count >= 100 else sorted_values[-1]
+            "p99": sorted_values[int(count * 0.99)] if count >= 100 else sorted_values[-1],
         }
 
     def get_all_metrics(self) -> Dict:
@@ -88,9 +99,8 @@ class MetricsCollector:
             "counters": dict(self._counters),
             "gauges": dict(self._gauges),
             "histograms": {
-                name: self.get_histogram_stats(name)
-                for name in set(self._histograms.keys())
-            }
+                name: self.get_histogram_stats(name) for name in set(self._histograms.keys())
+            },
         }
 
 
@@ -99,6 +109,7 @@ metrics = MetricsCollector()
 
 
 # ==================== Decorators ====================
+
 
 def track_request_time(name: str = "request_duration_seconds"):
     """
@@ -109,6 +120,7 @@ def track_request_time(name: str = "request_duration_seconds"):
         async def register_face(...):
             ...
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -128,6 +140,7 @@ def track_request_time(name: str = "request_duration_seconds"):
                 metrics.observe_histogram(name, duration)
 
         return wrapper
+
     return decorator
 
 
@@ -140,6 +153,7 @@ def count_calls(name: str):
         def check_liveness(...):
             ...
     """
+
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -153,13 +167,15 @@ def count_calls(name: str):
                 metrics.increment_counter(f"{name}_total")
             return await func(*args, **kwargs)
 
-        if hasattr(func, '__await__'):
+        if hasattr(func, "__await__"):
             return async_wrapper
         return wrapper
+
     return decorator
 
 
 # ==================== Metricas Especificas ====================
+
 
 def record_face_registration(tenant_id: str, success: bool, duration_ms: float):
     """Registra metrica de cadastro de face"""
@@ -167,8 +183,12 @@ def record_face_registration(tenant_id: str, success: bool, duration_ms: float):
         return
 
     status = "success" if success else "failure"
-    metrics.increment_counter("face_registrations_total", labels={"tenant": tenant_id, "status": status})
-    metrics.observe_histogram("face_registration_duration_ms", duration_ms, labels={"tenant": tenant_id})
+    metrics.increment_counter(
+        "face_registrations_total", labels={"tenant": tenant_id, "status": status}
+    )
+    metrics.observe_histogram(
+        "face_registration_duration_ms", duration_ms, labels={"tenant": tenant_id}
+    )
 
 
 def record_face_recognition(tenant_id: str, granted: bool, duration_ms: float, confidence: float):
@@ -177,9 +197,15 @@ def record_face_recognition(tenant_id: str, granted: bool, duration_ms: float, c
         return
 
     status = "granted" if granted else "denied"
-    metrics.increment_counter("face_recognitions_total", labels={"tenant": tenant_id, "status": status})
-    metrics.observe_histogram("face_recognition_duration_ms", duration_ms, labels={"tenant": tenant_id})
-    metrics.observe_histogram("face_recognition_confidence", confidence, labels={"tenant": tenant_id})
+    metrics.increment_counter(
+        "face_recognitions_total", labels={"tenant": tenant_id, "status": status}
+    )
+    metrics.observe_histogram(
+        "face_recognition_duration_ms", duration_ms, labels={"tenant": tenant_id}
+    )
+    metrics.observe_histogram(
+        "face_recognition_confidence", confidence, labels={"tenant": tenant_id}
+    )
 
 
 def record_liveness_check(tenant_id: str, passed: bool, score: float):
@@ -188,7 +214,9 @@ def record_liveness_check(tenant_id: str, passed: bool, score: float):
         return
 
     status = "passed" if passed else "failed"
-    metrics.increment_counter("liveness_checks_total", labels={"tenant": tenant_id, "status": status})
+    metrics.increment_counter(
+        "liveness_checks_total", labels={"tenant": tenant_id, "status": status}
+    )
     metrics.observe_histogram("liveness_scores", score, labels={"tenant": tenant_id})
 
 
@@ -197,11 +225,10 @@ def record_api_error(tenant_id: str, endpoint: str, error_type: str):
     if not METRICS_ENABLED:
         return
 
-    metrics.increment_counter("api_errors_total", labels={
-        "tenant": tenant_id or "unknown",
-        "endpoint": endpoint,
-        "error_type": error_type
-    })
+    metrics.increment_counter(
+        "api_errors_total",
+        labels={"tenant": tenant_id or "unknown", "endpoint": endpoint, "error_type": error_type},
+    )
 
 
 def set_active_connections(count: int):
@@ -221,6 +248,7 @@ def set_model_status(loaded: bool):
 
 
 # ==================== Prometheus Export ====================
+
 
 def get_prometheus_metrics() -> str:
     """
@@ -242,7 +270,7 @@ def get_prometheus_metrics() -> str:
     lines.append("")
 
     # Counters
-    for name, value in all_metrics['counters'].items():
+    for name, value in all_metrics["counters"].items():
         clean_name = name.replace("{", "_").replace("}", "").replace(",", "_").replace("=", "_")
         lines.append(f"# TYPE athenaface_{clean_name} counter")
         lines.append(f"athenaface_{clean_name} {value}")
@@ -250,7 +278,7 @@ def get_prometheus_metrics() -> str:
     lines.append("")
 
     # Gauges
-    for name, value in all_metrics['gauges'].items():
+    for name, value in all_metrics["gauges"].items():
         clean_name = name.replace("{", "_").replace("}", "").replace(",", "_").replace("=", "_")
         lines.append(f"# TYPE athenaface_{clean_name} gauge")
         lines.append(f"athenaface_{clean_name} {value}")
@@ -258,12 +286,12 @@ def get_prometheus_metrics() -> str:
     lines.append("")
 
     # Histograms (simplificado)
-    for name, stats in all_metrics['histograms'].items():
+    for name, stats in all_metrics["histograms"].items():
         clean_name = name.replace("{", "_").replace("}", "").replace(",", "_").replace("=", "_")
         lines.append(f"# TYPE athenaface_{clean_name} summary")
         lines.append(f"athenaface_{clean_name}_count {stats['count']}")
         lines.append(f"athenaface_{clean_name}_sum {stats['sum']:.4f}")
-        if stats['count'] > 0:
+        if stats["count"] > 0:
             lines.append(f'athenaface_{clean_name}{{quantile="0.5"}} {stats["p50"]:.4f}')
             lines.append(f'athenaface_{clean_name}{{quantile="0.95"}} {stats["p95"]:.4f}')
             lines.append(f'athenaface_{clean_name}{{quantile="0.99"}} {stats["p99"]:.4f}')
@@ -272,6 +300,7 @@ def get_prometheus_metrics() -> str:
 
 
 # ==================== Health Check ====================
+
 
 def get_health_status() -> Dict:
     """
@@ -289,12 +318,9 @@ def get_health_status() -> Dict:
     checks = {
         "model": {
             "status": "healthy" if face_service.is_ready() else "unhealthy",
-            "message": "Model loaded" if face_service.is_ready() else "Model not loaded"
+            "message": "Model loaded" if face_service.is_ready() else "Model not loaded",
         },
-        "cache": {
-            "status": "healthy",
-            "stats": cache.get_stats()
-        }
+        "cache": {"status": "healthy", "stats": cache.get_stats()},
     }
 
     # Status geral
@@ -303,5 +329,5 @@ def get_health_status() -> Dict:
     return {
         "status": "healthy" if all_healthy else "degraded",
         "timestamp": datetime.now().isoformat(),
-        "checks": checks
+        "checks": checks,
     }

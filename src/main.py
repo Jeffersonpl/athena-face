@@ -1,6 +1,7 @@
 """
 Athena Face - API Principal Multi-Tenant
 """
+
 import json
 import logging
 import uuid
@@ -16,10 +17,19 @@ from pydantic import BaseModel, Field, validator
 import uvicorn
 
 from src.config.settings import (
-    API_HOST, API_PORT, API_RELOAD, CORS_ORIGINS,
-    CORS_ALLOW_METHODS, CORS_ALLOW_HEADERS, CORS_ALLOW_CREDENTIALS,
-    DEFAULT_THRESHOLD, ENABLE_LIVENESS_CHECK, BASE_DIR,
-    MIN_FACE_SIZE, MAX_UPLOAD_SIZE, is_production
+    API_HOST,
+    API_PORT,
+    API_RELOAD,
+    CORS_ORIGINS,
+    CORS_ALLOW_METHODS,
+    CORS_ALLOW_HEADERS,
+    CORS_ALLOW_CREDENTIALS,
+    DEFAULT_THRESHOLD,
+    ENABLE_LIVENESS_CHECK,
+    BASE_DIR,
+    MIN_FACE_SIZE,
+    MAX_UPLOAD_SIZE,
+    is_production,
 )
 from src.config.tenants import list_active_tenants
 from src.middleware.tenant_middleware import verify_tenant_api_key, get_tenant_from_request
@@ -30,8 +40,7 @@ from src.utils.image_utils import image_to_array
 
 # Configurar logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -41,6 +50,7 @@ liveness_service = LivenessService()
 
 
 # ==================== CONTEXT MANAGERS ====================
+
 
 @contextmanager
 def get_db_cursor(tenant_config: Dict, dictionary: bool = False) -> Generator:
@@ -67,19 +77,22 @@ def get_db_cursor(tenant_config: Dict, dictionary: bool = False) -> Generator:
 
 # ==================== VALIDATION MODELS ====================
 
+
 class RegisterFaceRequest(BaseModel):
     """Modelo de validação para registro de face"""
+
     user_id: int = Field(..., gt=0, le=2147483647, description="ID do usuário (positivo)")
     check_liveness: bool = Field(True, description="Verificar liveness")
 
-    @validator('user_id')
+    @validator("user_id")
     def validate_user_id(cls, v):
         if v <= 0:
-            raise ValueError('user_id deve ser positivo')
+            raise ValueError("user_id deve ser positivo")
         return v
 
 
 # ==================== HELPER FUNCTIONS ====================
+
 
 def generate_error_id() -> str:
     """Gera ID único para rastreamento de erros"""
@@ -103,13 +116,14 @@ def validate_image_upload(image: UploadFile) -> None:
     if image.content_type and image.content_type not in allowed_types:
         raise HTTPException(
             status_code=400,
-            detail=f"Formato de imagem inválido. Permitidos: {', '.join(allowed_types)}"
+            detail=f"Formato de imagem inválido. Permitidos: {', '.join(allowed_types)}",
         )
 
 
 def hash_identifier(identifier: Any) -> str:
     """Hash de identificadores para logging seguro"""
     import hashlib
+
     return hashlib.sha256(str(identifier).encode()).hexdigest()[:12]
 
 
@@ -119,22 +133,15 @@ def hash_identifier(identifier: Any) -> str:
 docs_config = {}
 if is_production():
     # Em produção, desabilitar docs públicos
-    docs_config = {
-        "docs_url": None,
-        "redoc_url": None,
-        "openapi_url": None
-    }
+    docs_config = {"docs_url": None, "redoc_url": None, "openapi_url": None}
 else:
-    docs_config = {
-        "docs_url": "/docs",
-        "redoc_url": "/redoc"
-    }
+    docs_config = {"docs_url": "/docs", "redoc_url": "/redoc"}
 
 app = FastAPI(
     title="Athena Face - Facial Recognition API",
     version="2.0.0",
     description="Serviço Multi-Tenant de Reconhecimento Facial com InsightFace e Liveness Detection Avançado",
-    **docs_config
+    **docs_config,
 )
 
 # CORS - Configuração mais segura
@@ -154,6 +161,7 @@ if FRONTEND_DIR.exists():
 
 
 # ==================== LIFECYCLE EVENTS ====================
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -177,7 +185,9 @@ async def startup_event():
 
     # Validar configuração CORS
     if "*" in CORS_ORIGINS and is_production():
-        logger.warning("CORS configurado com '*' em produção! Configure CORS_ORIGINS com domínios específicos.")
+        logger.warning(
+            "CORS configurado com '*' em produção! Configure CORS_ORIGINS com domínios específicos."
+        )
 
     logger.info("Athena Face pronto!")
     logger.info("=" * 60)
@@ -192,6 +202,7 @@ async def shutdown_event():
 
 # ==================== PUBLIC ROUTES ====================
 
+
 @app.get("/")
 def read_root() -> Dict[str, Any]:
     """Informações do serviço"""
@@ -201,10 +212,7 @@ def read_root() -> Dict[str, Any]:
         "service": "Athena Face - Facial Recognition API",
         "version": "2.0.0",
         "status": "running",
-        "model": {
-            "name": face_service.model_name,
-            "loaded": face_service.is_ready()
-        },
+        "model": {"name": face_service.model_name, "loaded": face_service.is_ready()},
         "features": {
             "multi_tenant": True,
             "liveness_detection": ENABLE_LIVENESS_CHECK,
@@ -215,12 +223,12 @@ def read_root() -> Dict[str, Any]:
             "challenge_response": True,
             "rate_limiting": True,
             "frontend": True,
-            "metrics": True
+            "metrics": True,
         },
         "tenants_count": len(tenants),
         "docs": "/docs" if not is_production() else None,
         "frontend": "/facial",
-        "metrics": "/api/metrics/prometheus"
+        "metrics": "/api/metrics/prometheus",
     }
 
 
@@ -242,15 +250,13 @@ def health_check() -> Dict[str, Any]:
     return {
         "status": "healthy" if is_healthy else "degraded",
         "service": "athenaface",
-        "checks": {
-            "model": model_status,
-            "tenants": tenants_status
-        },
-        "timestamp": datetime.now().isoformat()
+        "checks": {"model": model_status, "tenants": tenants_status},
+        "timestamp": datetime.now().isoformat(),
     }
 
 
 # ==================== FRONTEND ROUTES ====================
+
 
 @app.get("/facial", response_class=HTMLResponse)
 @app.get("/facial/register", response_class=HTMLResponse)
@@ -273,7 +279,7 @@ async def serve_frontend():
     if not index_path.exists():
         raise HTTPException(
             status_code=404,
-            detail="Frontend não encontrado. Verifique se a pasta 'frontend' existe."
+            detail="Frontend não encontrado. Verifique se a pasta 'frontend' existe.",
         )
 
     return FileResponse(str(index_path))
@@ -281,13 +287,14 @@ async def serve_frontend():
 
 # ==================== API ROUTES ====================
 
+
 @app.post("/api/face/register")
 async def register_face(
-        request: Request,
-        user_id: int = Form(..., gt=0, le=2147483647, description="ID do usuário"),
-        image: UploadFile = File(..., description="Imagem com face"),
-        check_liveness: bool = Form(True, description="Verificar liveness"),
-        tenant_data: dict = Depends(verify_tenant_api_key)
+    request: Request,
+    user_id: int = Form(..., gt=0, le=2147483647, description="ID do usuário"),
+    image: UploadFile = File(..., description="Imagem com face"),
+    check_liveness: bool = Form(True, description="Verificar liveness"),
+    tenant_data: dict = Depends(verify_tenant_api_key),
 ):
     """
     Cadastra face de usuário
@@ -306,7 +313,7 @@ async def register_face(
     if not face_service.is_ready():
         raise HTTPException(
             status_code=503,
-            detail="Modelo não carregado. Execute: python scripts/download_models.py"
+            detail="Modelo não carregado. Execute: python scripts/download_models.py",
         )
 
     # Validar imagem
@@ -326,16 +333,13 @@ async def register_face(
         face_data = face_service.extract_embedding(image_array)
 
         if not face_data:
-            raise HTTPException(
-                status_code=400,
-                detail="Nenhuma face detectada na imagem"
-            )
+            raise HTTPException(status_code=400, detail="Nenhuma face detectada na imagem")
 
         # Verificar se múltiplas faces
         if face_data.get("multiple_faces"):
             raise HTTPException(
                 status_code=400,
-                detail="Múltiplas faces detectadas. Envie imagem com apenas uma face."
+                detail="Múltiplas faces detectadas. Envie imagem com apenas uma face.",
             )
 
         embedding = face_data["embedding"]
@@ -373,14 +377,13 @@ async def register_face(
                     liveness_result["passed"],
                     liveness_result["score"],
                     datetime.now() if liveness_result["passed"] else None,
-                    f"faces/{tenant_id}/user_{user_id}.jpg"
-                )
+                    f"faces/{tenant_id}/user_{user_id}.jpg",
+                ),
             )
 
             # Atualizar flag do usuário
             cursor.execute(
-                "UPDATE users SET has_facial_recognition = TRUE WHERE id = %s",
-                (user_id,)
+                "UPDATE users SET has_facial_recognition = TRUE WHERE id = %s", (user_id,)
             )
 
             conn.commit()
@@ -398,8 +401,8 @@ async def register_face(
                 "confidence_score": quality_score,
                 "liveness": liveness_result,
                 "embedding_dimensions": len(embedding),
-                "processing_time_ms": int(processing_time)
-            }
+                "processing_time_ms": int(processing_time),
+            },
         }
 
     except HTTPException:
@@ -411,11 +414,11 @@ async def register_face(
 
 @app.post("/api/face/recognize")
 async def recognize_face(
-        request: Request,
-        image: UploadFile = File(..., description="Imagem com face para reconhecimento"),
-        turnstile_id: Optional[int] = Form(None, ge=0, description="ID da catraca"),
-        event_id: Optional[int] = Form(None, ge=0, description="ID do evento"),
-        tenant_data: dict = Depends(verify_tenant_api_key)
+    request: Request,
+    image: UploadFile = File(..., description="Imagem com face para reconhecimento"),
+    turnstile_id: Optional[int] = Form(None, ge=0, description="ID da catraca"),
+    event_id: Optional[int] = Form(None, ge=0, description="ID do evento"),
+    tenant_data: dict = Depends(verify_tenant_api_key),
 ):
     """
     Reconhece face e libera acesso
@@ -453,7 +456,7 @@ async def recognize_face(
                 "granted": False,
                 "message": "Nenhuma face detectada",
                 "user": None,
-                "confidence": 0
+                "confidence": 0,
             }
 
         test_embedding = face_data["embedding"]
@@ -478,23 +481,25 @@ async def recognize_face(
                     "granted": False,
                     "message": "Nenhuma face cadastrada no sistema",
                     "user": None,
-                    "confidence": 0
+                    "confidence": 0,
                 }
 
             # Encontrar melhor match
             best_match = None
-            best_distance = float('inf')
+            best_distance = float("inf")
 
             for registered in registered_faces:
                 try:
-                    embedding = json.loads(registered['face_embedding'])
+                    embedding = json.loads(registered["face_embedding"])
                     distance = face_service.calculate_distance(test_embedding, embedding)
 
                     if distance < best_distance:
                         best_distance = distance
                         best_match = registered
                 except (json.JSONDecodeError, TypeError) as e:
-                    logger.warning(f"Embedding inválido para user_id={registered.get('user_id')}: {e}")
+                    logger.warning(
+                        f"Embedding inválido para user_id={registered.get('user_id')}: {e}"
+                    )
                     continue
 
             if best_match is None:
@@ -502,13 +507,13 @@ async def recognize_face(
                     "granted": False,
                     "message": "Erro ao processar faces cadastradas",
                     "user": None,
-                    "confidence": 0
+                    "confidence": 0,
                 }
 
             # Verificar se passou no threshold
             granted = best_distance < threshold
             confidence = face_service.calculate_similarity(best_distance, threshold)
-            status = 'granted' if granted else 'denied'
+            status = "granted" if granted else "denied"
 
             # Calcular tempo de processamento
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
@@ -523,17 +528,17 @@ async def recognize_face(
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
                 """,
                 (
-                    best_match['user_id'] if granted else None,
+                    best_match["user_id"] if granted else None,
                     event_id,
                     turnstile_id,
-                    'facial',
+                    "facial",
                     confidence,
                     best_distance,
                     status,
                     f"Threshold: {threshold}",
                     int(processing_time),
-                    request.client.host if request.client else None
-                )
+                    request.client.host if request.client else None,
+                ),
             )
 
             conn.commit()
@@ -548,15 +553,19 @@ async def recognize_face(
         return {
             "granted": granted,
             "message": "Acesso liberado" if granted else "Acesso negado - Face não reconhecida",
-            "user": {
-                "id": best_match['user_id'],
-                "name": best_match['name'],
-                "email": best_match['email']
-            } if granted else None,
+            "user": (
+                {
+                    "id": best_match["user_id"],
+                    "name": best_match["name"],
+                    "email": best_match["email"],
+                }
+                if granted
+                else None
+            ),
             "confidence": float(confidence),
             "distance": float(best_distance),
             "threshold": threshold,
-            "processing_time_ms": int(processing_time)
+            "processing_time_ms": int(processing_time),
         }
 
     except Exception as e:
@@ -566,9 +575,9 @@ async def recognize_face(
 
 @app.post("/api/face/compare")
 async def compare_faces(
-        image1: UploadFile = File(..., description="Primeira imagem"),
-        image2: UploadFile = File(..., description="Segunda imagem"),
-        tenant_data: dict = Depends(verify_tenant_api_key)
+    image1: UploadFile = File(..., description="Primeira imagem"),
+    image2: UploadFile = File(..., description="Segunda imagem"),
+    tenant_data: dict = Depends(verify_tenant_api_key),
 ):
     """
     Compara duas faces
@@ -597,26 +606,18 @@ async def compare_faces(
         face1_data = face_service.extract_embedding(image1_array)
 
         if not face1_data:
-            raise HTTPException(
-                status_code=400,
-                detail="Nenhuma face detectada na imagem 1"
-            )
+            raise HTTPException(status_code=400, detail="Nenhuma face detectada na imagem 1")
 
         # Processar imagem 2
         image2_array = image_to_array(image2)
         face2_data = face_service.extract_embedding(image2_array)
 
         if not face2_data:
-            raise HTTPException(
-                status_code=400,
-                detail="Nenhuma face detectada na imagem 2"
-            )
+            raise HTTPException(status_code=400, detail="Nenhuma face detectada na imagem 2")
 
         # Comparar
         comparison = face_service.compare_embeddings(
-            face1_data["embedding"],
-            face2_data["embedding"],
-            threshold
+            face1_data["embedding"], face2_data["embedding"], threshold
         )
 
         return {
@@ -624,7 +625,7 @@ async def compare_faces(
             "is_same_person": comparison["is_match"],
             "similarity": comparison["similarity"],
             "distance": comparison["distance"],
-            "threshold": threshold
+            "threshold": threshold,
         }
 
     except HTTPException:
@@ -644,10 +645,7 @@ def list_tenants() -> Dict[str, Any]:
     return {
         "success": True,
         "count": len(tenants),
-        "tenants": [
-            {"id": tenant_id, "name": name}
-            for tenant_id, name in tenants.items()
-        ]
+        "tenants": [{"id": tenant_id, "name": name} for tenant_id, name in tenants.items()],
     }
 
 
@@ -664,7 +662,7 @@ _metrics = {
     "liveness_failed": 0,
     "access_granted": 0,
     "access_denied": 0,
-    "start_time": datetime.now().isoformat()
+    "start_time": datetime.now().isoformat(),
 }
 
 
@@ -676,8 +674,7 @@ def increment_metric(name: str, value: int = 1):
 
 @app.get("/api/metrics")
 async def get_metrics(
-    request: Request,
-    tenant_data: dict = Depends(verify_tenant_api_key)
+    request: Request, tenant_data: dict = Depends(verify_tenant_api_key)
 ) -> Dict[str, Any]:
     """
     Retorna métricas do sistema
@@ -698,13 +695,13 @@ async def get_metrics(
     model_info = {
         "name": face_service.model_name,
         "is_ready": face_service.is_ready(),
-        "det_size": face_service.det_size
+        "det_size": face_service.det_size,
     }
 
     # Estatísticas do tenant
     tenant_stats = {
         "tenant_id": tenant_id,
-        "threshold": tenant_config.get("threshold", DEFAULT_THRESHOLD)
+        "threshold": tenant_config.get("threshold", DEFAULT_THRESHOLD),
     }
 
     # Tentar obter estatísticas do banco
@@ -743,17 +740,16 @@ async def get_metrics(
                     "total_accesses": result["total"] or 0,
                     "granted": result["granted"] or 0,
                     "denied": result["denied"] or 0,
-                    "avg_processing_time_ms": float(result["avg_processing_time"]) if result["avg_processing_time"] else 0
+                    "avg_processing_time_ms": (
+                        float(result["avg_processing_time"]) if result["avg_processing_time"] else 0
+                    ),
                 }
     except Exception as e:
         logger.debug(f"Error getting DB stats: {e}")
         db_stats = {"error": "Unable to fetch database statistics"}
 
     # Liveness service stats
-    liveness_stats = {
-        "active_sessions": len(liveness_service.sessions),
-        "version": "2.0"
-    }
+    liveness_stats = {"active_sessions": len(liveness_service.sessions), "version": "2.0"}
 
     return {
         "success": True,
@@ -768,8 +764,8 @@ async def get_metrics(
             "register_total": _metrics["register_total"],
             "recognize_total": _metrics["recognize_total"],
             "compare_total": _metrics["compare_total"],
-            "errors_total": _metrics["errors_total"]
-        }
+            "errors_total": _metrics["errors_total"],
+        },
     }
 
 
@@ -824,9 +820,4 @@ athenaface_liveness_total{{result="failed"}} {_metrics["liveness_failed"]}
 # ==================== MAIN ====================
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "src.main:app",
-        host=API_HOST,
-        port=API_PORT,
-        reload=API_RELOAD
-    )
+    uvicorn.run("src.main:app", host=API_HOST, port=API_PORT, reload=API_RELOAD)
